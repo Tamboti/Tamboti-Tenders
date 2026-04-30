@@ -37,6 +37,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EditTenderDialog } from "@/components/tender/EditTenderDialog";
+import { getAnonUserId } from "@/lib/anonUser";
 import { formatDate, daysUntil } from "@/lib/format";
 import {
   Search,
@@ -116,11 +117,11 @@ const Tenders = () => {
   };
 
   const loadBookmarks = async () => {
-    if (!user) return;
+    const uid = user?.id ?? getAnonUserId();
     const { data } = await supabase
       .from("tender_bookmarks")
       .select("tender_id")
-      .eq("user_id", user.id);
+      .eq("user_id", uid);
     setBookmarks(new Set((data ?? []).map((d) => d.tender_id)));
   };
 
@@ -139,13 +140,13 @@ const Tenders = () => {
 
   const toggleBookmark = async (tenderId: string, e?: React.MouseEvent) => {
     e?.stopPropagation();
-    if (!user) return;
+    const uid = user?.id ?? getAnonUserId();
     const has = bookmarks.has(tenderId);
     if (has) {
       const { error } = await supabase
         .from("tender_bookmarks")
         .delete()
-        .eq("user_id", user.id)
+        .eq("user_id", uid)
         .eq("tender_id", tenderId);
       if (error) return toast.error(error.message);
       setBookmarks((b) => {
@@ -156,7 +157,7 @@ const Tenders = () => {
     } else {
       const { error } = await supabase
         .from("tender_bookmarks")
-        .insert({ user_id: user.id, tender_id: tenderId });
+        .insert({ user_id: uid, tender_id: tenderId });
       if (error) return toast.error(error.message);
       setBookmarks((b) => new Set(b).add(tenderId));
     }
@@ -264,7 +265,7 @@ const Tenders = () => {
           </Select>
         </div>
 
-        <div className="overflow-x-auto">
+        <div>
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
@@ -306,10 +307,10 @@ const Tenders = () => {
                           <Bookmark className="h-4 w-4 text-muted-foreground hover:text-accent" />
                         )}
                       </TableCell>
-                      <TableCell className="max-w-xl">
-                        <div className="font-medium truncate">{t.title}</div>
+                      <TableCell className="py-3">
+                        <div className="font-medium leading-snug line-clamp-2">{t.title}</div>
                         {t.procuring_entity && (
-                          <div className="text-xs text-muted-foreground truncate">
+                          <div className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
                             {t.procuring_entity}
                           </div>
                         )}
