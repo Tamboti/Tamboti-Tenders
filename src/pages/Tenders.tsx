@@ -52,6 +52,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { motion } from "framer-motion";
 
 const PAGE_SIZE = 50;
 
@@ -292,13 +293,16 @@ const Tenders = () => {
                   </TableCell>
                 </TableRow>
               ) : (
-                tenders.map((t) => {
+                tenders.map((t, idx) => {
                   const dDays = daysUntil(t.deadline);
                   return (
-                    <TableRow
+                    <motion.tr
                       key={t.id}
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.2, delay: Math.min(idx * 0.015, 0.25), ease: [0.22, 1, 0.36, 1] }}
                       onClick={() => navigate(`/tender/${t.id}`)}
-                      className="cursor-pointer"
+                      className="cursor-pointer border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted"
                     >
                       <TableCell onClick={(e) => toggleBookmark(t.id, e)}>
                         {bookmarks.has(t.id) ? (
@@ -359,7 +363,7 @@ const Tenders = () => {
                           </DropdownMenu>
                         </TableCell>
                       )}
-                    </TableRow>
+                    </motion.tr>
                   );
                 })
               )}
