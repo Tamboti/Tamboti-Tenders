@@ -43,7 +43,6 @@ export const Sidebar = () => {
           </NavLink>
         ))}
       </nav>
-
-    
+    </aside>
   );
 };
