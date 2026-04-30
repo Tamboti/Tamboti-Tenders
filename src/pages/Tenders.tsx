@@ -396,21 +396,7 @@ const Tenders = () => {
         </div>
       </div>
 
-      {selected && (
-        <div className="rounded-lg border border-border bg-card shadow-sm p-6 relative">
-          <div className="absolute right-4 top-4 flex gap-2">
-            <Button variant="outline" size="sm" asChild>
-              <Link to={`/tender/${selected.id}`}>
-                <ExternalLink className="h-3 w-3 mr-1" /> Open full page
-              </Link>
-            </Button>
-            <Button variant="ghost" size="icon" onClick={() => setSelected(null)}>
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-          <TenderDetail tender={selected} onChanged={load} />
-        </div>
-      )}
+
 
       <EditTenderDialog
         tender={editing}
