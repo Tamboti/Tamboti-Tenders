@@ -36,7 +36,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { StatusBadge } from "@/components/StatusBadge";
-import { TenderDetail } from "@/components/tender/TenderDetail";
 import { EditTenderDialog } from "@/components/tender/EditTenderDialog";
 import { formatDate, daysUntil } from "@/lib/format";
 import {
@@ -46,12 +45,10 @@ import {
   MoreHorizontal,
   ChevronLeft,
   ChevronRight,
-  ExternalLink,
   Pencil,
   Trash2,
-  X,
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -59,6 +56,7 @@ const PAGE_SIZE = 50;
 
 const Tenders = () => {
   const { user, role } = useAuth();
+  const navigate = useNavigate();
   const [tenders, setTenders] = useState<Tender[]>([]);
   const [bookmarks, setBookmarks] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
@@ -72,7 +70,6 @@ const Tenders = () => {
   const [countries, setCountries] = useState<string[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
 
-  const [selected, setSelected] = useState<Tender | null>(null);
   const [editing, setEditing] = useState<Tender | null>(null);
   const [deleting, setDeleting] = useState<Tender | null>(null);
 
@@ -173,7 +170,6 @@ const Tenders = () => {
       return;
     }
     toast.success("Tender deleted");
-    if (selected?.id === deleting.id) setSelected(null);
     setDeleting(null);
     load();
   };
