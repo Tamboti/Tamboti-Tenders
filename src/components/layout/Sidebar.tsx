@@ -34,7 +34,7 @@ const sections: NavSection[] = [
     items: [
       { to: "/", label: "Account home", icon: Home },
       { label: "Recents", icon: Clock, hasChildren: true, disabled: true },
-      { label: "Sources", icon: Globe, hasChildren: true, disabled: true },
+      { to: "/sources", label: "Sources", icon: Globe },
     ],
   },
   {
