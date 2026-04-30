@@ -34,7 +34,7 @@ const sections: NavSection[] = [
     items: [
       { to: "/", label: "Account home", icon: Home },
       { label: "Recents", icon: Clock, hasChildren: true, disabled: true },
-      { label: "Sources", icon: Globe, hasChildren: true, disabled: true },
+      { to: "/sources", label: "Sources", icon: Globe },
     ],
   },
   {
@@ -54,7 +54,7 @@ const sections: NavSection[] = [
   {
     heading: "Manage",
     items: [
-      { label: "Data & scrapes", icon: Database, hasChildren: true, disabled: true },
+      { to: "/sources", label: "Data & scrapes", icon: Database },
       { label: "Access control", icon: ShieldCheck, hasChildren: true, disabled: true },
       { label: "Settings", icon: Settings, hasChildren: true, disabled: true },
     ],

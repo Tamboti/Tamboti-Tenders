@@ -8,6 +8,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import Tenders from "./pages/Tenders";
 import TenderDetailPage from "./pages/TenderDetailPage";
 import Alerts from "./pages/Alerts";
+import Sources from "./pages/Sources";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -24,6 +25,7 @@ const App = () => (
               <Route path="/" element={<Tenders />} />
               <Route path="/tender/:id" element={<TenderDetailPage />} />
               <Route path="/alerts" element={<Alerts />} />
+              <Route path="/sources" element={<Sources />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
