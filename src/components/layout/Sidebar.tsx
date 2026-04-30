@@ -1,7 +1,5 @@
-import { NavLink, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Bell, FileText, LogOut, Shield } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
-import { Button } from "@/components/ui/button";
+import { NavLink } from "react-router-dom";
+import { LayoutDashboard, Bell, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const nav = [
