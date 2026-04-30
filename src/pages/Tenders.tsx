@@ -36,7 +36,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { StatusBadge } from "@/components/StatusBadge";
-import { TenderDetail } from "@/components/tender/TenderDetail";
 import { EditTenderDialog } from "@/components/tender/EditTenderDialog";
 import { formatDate, daysUntil } from "@/lib/format";
 import {
@@ -46,12 +45,10 @@ import {
   MoreHorizontal,
   ChevronLeft,
   ChevronRight,
-  ExternalLink,
   Pencil,
   Trash2,
-  X,
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -59,6 +56,7 @@ const PAGE_SIZE = 50;
 
 const Tenders = () => {
   const { user, role } = useAuth();
+  const navigate = useNavigate();
   const [tenders, setTenders] = useState<Tender[]>([]);
   const [bookmarks, setBookmarks] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
@@ -72,7 +70,6 @@ const Tenders = () => {
   const [countries, setCountries] = useState<string[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
 
-  const [selected, setSelected] = useState<Tender | null>(null);
   const [editing, setEditing] = useState<Tender | null>(null);
   const [deleting, setDeleting] = useState<Tender | null>(null);
 
@@ -173,7 +170,6 @@ const Tenders = () => {
       return;
     }
     toast.success("Tender deleted");
-    if (selected?.id === deleting.id) setSelected(null);
     setDeleting(null);
     load();
   };
@@ -274,7 +270,6 @@ const Tenders = () => {
               <TableRow className="hover:bg-transparent">
                 <TableHead className="w-[40px]"></TableHead>
                 <TableHead>Title</TableHead>
-                <TableHead>Procuring entity</TableHead>
                 <TableHead>Country</TableHead>
                 <TableHead>Category</TableHead>
                 <TableHead>Deadline</TableHead>
@@ -285,28 +280,24 @@ const Tenders = () => {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={isAdmin ? 8 : 7} className="text-center text-muted-foreground py-10">
+                  <TableCell colSpan={isAdmin ? 7 : 6} className="text-center text-muted-foreground py-10">
                     Loading…
                   </TableCell>
                 </TableRow>
               ) : tenders.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={isAdmin ? 8 : 7} className="text-center text-muted-foreground py-10">
+                  <TableCell colSpan={isAdmin ? 7 : 6} className="text-center text-muted-foreground py-10">
                     No tenders match the current filters.
                   </TableCell>
                 </TableRow>
               ) : (
                 tenders.map((t) => {
-                  const isSelected = selected?.id === t.id;
                   const dDays = daysUntil(t.deadline);
                   return (
                     <TableRow
                       key={t.id}
-                      onClick={() => setSelected(isSelected ? null : t)}
-                      className={cn(
-                        "cursor-pointer",
-                        isSelected && "bg-accent/5 hover:bg-accent/10"
-                      )}
+                      onClick={() => navigate(`/tender/${t.id}`)}
+                      className="cursor-pointer"
                     >
                       <TableCell onClick={(e) => toggleBookmark(t.id, e)}>
                         {bookmarks.has(t.id) ? (
@@ -315,16 +306,13 @@ const Tenders = () => {
                           <Bookmark className="h-4 w-4 text-muted-foreground hover:text-accent" />
                         )}
                       </TableCell>
-                      <TableCell className="max-w-md">
+                      <TableCell className="max-w-xl">
                         <div className="font-medium truncate">{t.title}</div>
-                        {t.reference_number && (
-                          <div className="text-xs text-muted-foreground font-mono truncate">
-                            {t.reference_number}
+                        {t.procuring_entity && (
+                          <div className="text-xs text-muted-foreground truncate">
+                            {t.procuring_entity}
                           </div>
                         )}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
-                        {t.procuring_entity ?? "—"}
                       </TableCell>
                       <TableCell className="text-sm">{t.country ?? "—"}</TableCell>
                       <TableCell className="text-sm">{t.category ?? "—"}</TableCell>
@@ -408,21 +396,7 @@ const Tenders = () => {
         </div>
       </div>
 
-      {selected && (
-        <div className="rounded-lg border border-border bg-card shadow-sm p-6 relative">
-          <div className="absolute right-4 top-4 flex gap-2">
-            <Button variant="outline" size="sm" asChild>
-              <Link to={`/tender/${selected.id}`}>
-                <ExternalLink className="h-3 w-3 mr-1" /> Open full page
-              </Link>
-            </Button>
-            <Button variant="ghost" size="icon" onClick={() => setSelected(null)}>
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-          <TenderDetail tender={selected} onChanged={load} />
-        </div>
-      )}
+
 
       <EditTenderDialog
         tender={editing}
