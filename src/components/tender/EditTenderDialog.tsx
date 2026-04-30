@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Dialog,
@@ -35,8 +35,9 @@ export const EditTenderDialog = ({
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<Partial<Tender>>(tender ?? {});
 
-  // Reset when tender changes
-  useState(() => setForm(tender ?? {}));
+  useEffect(() => {
+    setForm(tender ?? {});
+  }, [tender]);
 
   if (!tender) return null;
 
