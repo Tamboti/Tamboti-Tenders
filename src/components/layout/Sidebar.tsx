@@ -54,7 +54,7 @@ const sections: NavSection[] = [
   {
     heading: "Manage",
     items: [
-      { label: "Data & scrapes", icon: Database, hasChildren: true, disabled: true },
+      { to: "/sources", label: "Data & scrapes", icon: Database },
       { label: "Access control", icon: ShieldCheck, hasChildren: true, disabled: true },
       { label: "Settings", icon: Settings, hasChildren: true, disabled: true },
     ],
