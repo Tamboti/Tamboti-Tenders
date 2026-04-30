@@ -265,7 +265,7 @@ const Tenders = () => {
           </Select>
         </div>
 
-        <div className="overflow-x-auto">
+        <div>
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
@@ -307,10 +307,10 @@ const Tenders = () => {
                           <Bookmark className="h-4 w-4 text-muted-foreground hover:text-accent" />
                         )}
                       </TableCell>
-                      <TableCell className="max-w-xl">
-                        <div className="font-medium truncate">{t.title}</div>
+                      <TableCell className="py-3">
+                        <div className="font-medium leading-snug line-clamp-2">{t.title}</div>
                         {t.procuring_entity && (
-                          <div className="text-xs text-muted-foreground truncate">
+                          <div className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
                             {t.procuring_entity}
                           </div>
                         )}
