@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { getAnonUserId } from "@/lib/anonUser";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { formatDateTime } from "@/lib/format";
@@ -37,11 +38,11 @@ export const TenderNotes = ({ tenderId }: { tenderId: string }) => {
   }, [tenderId]);
 
   const add = async () => {
-    if (!text.trim() || !user) return;
+    if (!text.trim()) return;
     setSubmitting(true);
     const { error } = await supabase.from("tender_notes").insert({
       tender_id: tenderId,
-      user_id: user.id,
+      user_id: user?.id ?? getAnonUserId(),
       note: text.trim(),
     });
     setSubmitting(false);
@@ -86,16 +87,14 @@ export const TenderNotes = ({ tenderId }: { tenderId: string }) => {
             <div key={n.id} className="rounded-md border border-border bg-card p-3 text-sm">
               <div className="flex items-start justify-between gap-2">
                 <p className="whitespace-pre-wrap flex-1">{n.note}</p>
-                {n.user_id === user?.id && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6 text-muted-foreground"
-                    onClick={() => remove(n.id)}
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
-                )}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 text-muted-foreground"
+                  onClick={() => remove(n.id)}
+                >
+                  <Trash2 className="h-3 w-3" />
+                </Button>
               </div>
               <div className="text-[10px] text-muted-foreground mt-1">
                 {formatDateTime(n.created_at)}
