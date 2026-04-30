@@ -270,7 +270,6 @@ const Tenders = () => {
               <TableRow className="hover:bg-transparent">
                 <TableHead className="w-[40px]"></TableHead>
                 <TableHead>Title</TableHead>
-                <TableHead>Procuring entity</TableHead>
                 <TableHead>Country</TableHead>
                 <TableHead>Category</TableHead>
                 <TableHead>Deadline</TableHead>
@@ -281,28 +280,24 @@ const Tenders = () => {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={isAdmin ? 8 : 7} className="text-center text-muted-foreground py-10">
+                  <TableCell colSpan={isAdmin ? 7 : 6} className="text-center text-muted-foreground py-10">
                     Loading…
                   </TableCell>
                 </TableRow>
               ) : tenders.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={isAdmin ? 8 : 7} className="text-center text-muted-foreground py-10">
+                  <TableCell colSpan={isAdmin ? 7 : 6} className="text-center text-muted-foreground py-10">
                     No tenders match the current filters.
                   </TableCell>
                 </TableRow>
               ) : (
                 tenders.map((t) => {
-                  const isSelected = selected?.id === t.id;
                   const dDays = daysUntil(t.deadline);
                   return (
                     <TableRow
                       key={t.id}
-                      onClick={() => setSelected(isSelected ? null : t)}
-                      className={cn(
-                        "cursor-pointer",
-                        isSelected && "bg-accent/5 hover:bg-accent/10"
-                      )}
+                      onClick={() => navigate(`/tender/${t.id}`)}
+                      className="cursor-pointer"
                     >
                       <TableCell onClick={(e) => toggleBookmark(t.id, e)}>
                         {bookmarks.has(t.id) ? (
@@ -311,16 +306,13 @@ const Tenders = () => {
                           <Bookmark className="h-4 w-4 text-muted-foreground hover:text-accent" />
                         )}
                       </TableCell>
-                      <TableCell className="max-w-md">
+                      <TableCell className="max-w-xl">
                         <div className="font-medium truncate">{t.title}</div>
-                        {t.reference_number && (
-                          <div className="text-xs text-muted-foreground font-mono truncate">
-                            {t.reference_number}
+                        {t.procuring_entity && (
+                          <div className="text-xs text-muted-foreground truncate">
+                            {t.procuring_entity}
                           </div>
                         )}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
-                        {t.procuring_entity ?? "—"}
                       </TableCell>
                       <TableCell className="text-sm">{t.country ?? "—"}</TableCell>
                       <TableCell className="text-sm">{t.category ?? "—"}</TableCell>
