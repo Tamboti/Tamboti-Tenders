@@ -8,13 +8,6 @@ const nav = [
 ];
 
 export const Sidebar = () => {
-  const { user, role, signOut } = useAuth();
-  const navigate = useNavigate();
-
-  const handleSignOut = async () => {
-    await signOut();
-    navigate("/login");
-  };
 
   return (
     <aside className="w-60 border-r border-sidebar-border bg-sidebar flex flex-col h-screen sticky top-0">
@@ -51,22 +44,6 @@ export const Sidebar = () => {
         ))}
       </nav>
 
-      <div className="p-3 border-t border-sidebar-border space-y-2">
-        <div className="px-3 py-2 rounded-md bg-sidebar-accent/40">
-          <div className="text-xs font-medium text-sidebar-foreground truncate">
-            {user?.email ?? "Not signed in"}
-          </div>
-          <div className="flex items-center gap-1 mt-1">
-            {role === "admin" && <Shield className="h-3 w-3 text-accent" />}
-            <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
-              {role ?? "guest"}
-            </span>
-          </div>
-        </div>
-        <Button variant="ghost" size="sm" className="w-full justify-start" onClick={handleSignOut}>
-          <LogOut className="h-4 w-4 mr-2" /> Sign out
-        </Button>
-      </div>
-    </aside>
+    
   );
 };
