@@ -50,6 +50,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { handleDbError } from "@/lib/dbError";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
@@ -96,7 +97,7 @@ const Tenders = () => {
     if (status !== "all") query = query.eq("workflow_status", status);
 
     const { data, error, count } = await query;
-    if (error) toast.error(error.message);
+    if (error) toast.error(handleDbError(error));
     setTenders((data as Tender[]) ?? []);
     setTotal(count ?? 0);
     setLoading(false);
@@ -149,7 +150,7 @@ const Tenders = () => {
         .delete()
         .eq("user_id", uid)
         .eq("tender_id", tenderId);
-      if (error) return toast.error(error.message);
+      if (error) return toast.error(handleDbError(error));
       setBookmarks((b) => {
         const n = new Set(b);
         n.delete(tenderId);
@@ -159,7 +160,7 @@ const Tenders = () => {
       const { error } = await supabase
         .from("tender_bookmarks")
         .insert({ user_id: uid, tender_id: tenderId });
-      if (error) return toast.error(error.message);
+      if (error) return toast.error(handleDbError(error));
       setBookmarks((b) => new Set(b).add(tenderId));
     }
   };
@@ -168,7 +169,7 @@ const Tenders = () => {
     if (!deleting) return;
     const { error } = await supabase.from("tenders").delete().eq("id", deleting.id);
     if (error) {
-      toast.error(error.message);
+      toast.error(handleDbError(error));
       return;
     }
     toast.success("Tender deleted");

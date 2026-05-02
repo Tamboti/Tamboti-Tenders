@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { handleDbError } from "@/lib/dbError";
 import { toast } from "sonner";
 
 export const EditTenderDialog = ({
@@ -62,7 +63,7 @@ export const EditTenderDialog = ({
     };
     const { error } = await supabase.from("tenders").update(payload).eq("id", tender.id);
     setSaving(false);
-    if (error) return toast.error(error.message);
+    if (error) return toast.error(handleDbError(error));
     toast.success("Tender updated");
     onSaved();
     onOpenChange(false);

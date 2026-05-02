@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { formatDateTime } from "@/lib/format";
 import { Trash2, Loader2 } from "lucide-react";
+import { handleDbError } from "@/lib/dbError";
 import { toast } from "sonner";
 
 type Note = {
@@ -47,7 +48,7 @@ export const TenderNotes = ({ tenderId }: { tenderId: string }) => {
     });
     setSubmitting(false);
     if (error) {
-      toast.error(error.message);
+      toast.error(handleDbError(error));
       return;
     }
     setText("");
@@ -56,7 +57,7 @@ export const TenderNotes = ({ tenderId }: { tenderId: string }) => {
 
   const remove = async (id: string) => {
     const { error } = await supabase.from("tender_notes").delete().eq("id", id);
-    if (error) return toast.error(error.message);
+    if (error) return toast.error(handleDbError(error));
     setNotes((n) => n.filter((x) => x.id !== id));
   };
 

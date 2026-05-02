@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { ExternalLink, Calendar, MapPin, Building2, Tag, DollarSign } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { handleDbError } from "@/lib/dbError";
 import { toast } from "sonner";
 import { useState } from "react";
 
@@ -51,7 +52,7 @@ export const TenderDetail = ({
       .eq("id", tender.id);
     setUpdating(false);
     if (error) {
-      toast.error(error.message);
+      toast.error(handleDbError(error));
       return;
     }
     setStatus(next);
