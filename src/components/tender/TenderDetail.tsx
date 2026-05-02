@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { ExternalLink, Calendar, MapPin, Building2, Tag, DollarSign } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { handleDbError } from "@/lib/dbError";
+import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { useState } from "react";
 
@@ -40,6 +41,8 @@ export const TenderDetail = ({
   tender: Tender;
   onChanged?: () => void;
 }) => {
+  const { role } = useAuth();
+  const isAdmin = role === "admin";
   const [status, setStatus] = useState(tender.workflow_status);
   const [updating, setUpdating] = useState(false);
   const dDays = daysUntil(tender.deadline);
@@ -79,18 +82,20 @@ export const TenderDetail = ({
           )}
         </div>
         <div className="flex items-center gap-2">
-          <Select value={status} onValueChange={updateStatus} disabled={updating}>
-            <SelectTrigger className="w-[150px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {WORKFLOW_STATUSES.map((s) => (
-                <SelectItem key={s} value={s}>
-                  {s}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {isAdmin && (
+            <Select value={status} onValueChange={updateStatus} disabled={updating}>
+              <SelectTrigger className="w-[150px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {WORKFLOW_STATUSES.map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {s}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           {tender.source_url && (
             <Button variant="outline" size="sm" asChild>
               <a href={tender.source_url} target="_blank" rel="noreferrer">
