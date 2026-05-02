@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Trash2, Plus, Bell } from "lucide-react";
+import { handleDbError } from "@/lib/dbError";
 import { toast } from "sonner";
 import { formatDate } from "@/lib/format";
 
@@ -46,7 +47,7 @@ const Alerts = () => {
       .select("*")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false });
-    if (error) toast.error(error.message);
+    if (error) toast.error(handleDbError(error));
     setRules((data as Rule[]) ?? []);
     setLoading(false);
   };
@@ -71,7 +72,7 @@ const Alerts = () => {
       active: true,
     });
     setAdding(false);
-    if (error) return toast.error(error.message);
+    if (error) return toast.error(handleDbError(error));
     setCountry("");
     setCategory("");
     setKeyword("");
@@ -81,7 +82,7 @@ const Alerts = () => {
 
   const remove = async (id: string) => {
     const { error } = await supabase.from("alert_rules").delete().eq("id", id);
-    if (error) return toast.error(error.message);
+    if (error) return toast.error(handleDbError(error));
     setRules((r) => r.filter((x) => x.id !== id));
   };
 
@@ -90,7 +91,7 @@ const Alerts = () => {
       .from("alert_rules")
       .update({ active: !rule.active })
       .eq("id", rule.id);
-    if (error) return toast.error(error.message);
+    if (error) return toast.error(handleDbError(error));
     setRules((rs) =>
       rs.map((r) => (r.id === rule.id ? { ...r, active: !rule.active } : r))
     );
