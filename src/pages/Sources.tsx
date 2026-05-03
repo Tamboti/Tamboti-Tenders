@@ -28,6 +28,7 @@ type Scraper = {
 const SCRAPERS: Scraper[] = [
   { fn: "tnz-scrapper", label: "Tanzania Scraper", country: "Tanzania", source: "tanzania" },
   { fn: "zm-scrapper", label: "Zambia Scraper", country: "Zambia", source: "zambia" },
+  { fn: "undp-scrapper", label: "UNDP Scraper", country: "Global", source: "undp" },
 ];
 
 const statusVariant = (s: string) => {
