@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Tender } from "@/lib/types";
 import { TenderDetail } from "@/components/tender/TenderDetail";
@@ -106,6 +106,7 @@ const NotFound = () => (
 
 const TenderDetailPage = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [tender, setTender] = useState<Tender | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -123,13 +124,14 @@ const TenderDetailPage = () => {
     <div className="p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
 
       {/* ── Back button ── */}
-      <Link
-        to="/"
+      <button
+        type="button"
+        onClick={() => navigate(-1)}
         className="group inline-flex items-center gap-1.5 w-fit rounded-lg px-1 py-0.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
       >
         <ArrowLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-0.5" />
         <span>Tenders</span>
-      </Link>
+      </button>
 
       {/* ── Content ── */}
       {loading ? (

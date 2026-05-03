@@ -31,7 +31,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setSession(s);
       setUser(s?.user ?? null);
       if (s?.user) {
-        setTimeout(() => fetchRole(s.user.id), 0);
+        setTimeout(() => fetchRole(s.user), 0);
       } else {
         setRole(null);
       }
@@ -40,20 +40,43 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     supabase.auth.getSession().then(({ data: { session: s } }) => {
       setSession(s);
       setUser(s?.user ?? null);
-      if (s?.user) fetchRole(s.user.id);
+      if (s?.user) fetchRole(s.user);
       setLoading(false);
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  const fetchRole = async (userId: string) => {
-    const { data } = await supabase
+  const fetchRole = async (currentUser: User) => {
+    const metadataRole = currentUser.app_metadata?.role ?? currentUser.user_metadata?.role;
+
+    const { data, error } = await supabase
       .from("user_profiles")
       .select("role")
-      .eq("id", userId)
+      .eq("id", currentUser.id)
       .maybeSingle();
-    setRole((data?.role as Role) ?? "viewer");
+
+    if (error) {
+      console.warn("Role lookup failed:", error.message);
+      if (metadataRole === "admin" || metadataRole === "viewer") {
+        setRole(metadataRole);
+        return;
+      }
+      setRole("viewer");
+      return;
+    }
+
+    if (data?.role === "admin" || data?.role === "viewer") {
+      setRole(data.role);
+      return;
+    }
+
+    if (metadataRole === "admin" || metadataRole === "viewer") {
+      setRole(metadataRole);
+      return;
+    }
+
+    setRole("viewer");
   };
 
   const signOut = async () => {

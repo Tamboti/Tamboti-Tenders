@@ -2,9 +2,8 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { toast } from "@/components/ui/sonner";
-import { Loader2, Play, RefreshCw, Globe } from "lucide-react";
+import { Loader2, Play, Globe, CheckCircle2, XCircle, Clock3 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 type ScrapeLog = {
@@ -38,6 +37,15 @@ const statusVariant = (s: string) => {
   return "bg-destructive/15 text-destructive border-destructive/30";
 };
 
+const StatusIcon = ({ status }: { status: string }) => {
+  const v = status.toLowerCase();
+  if (v === "success" || v === "ok" || v === "completed")
+    return <CheckCircle2 className="h-3.5 w-3.5 text-success shrink-0" />;
+  if (v === "running" || v === "pending")
+    return <Clock3 className="h-3.5 w-3.5 text-warning shrink-0" />;
+  return <XCircle className="h-3.5 w-3.5 text-destructive shrink-0" />;
+};
+
 export default function Sources() {
   const [logs, setLogs] = useState<ScrapeLog[]>([]);
   const [loading, setLoading] = useState(true);
@@ -57,9 +65,7 @@ export default function Sources() {
     setLoading(false);
   };
 
-  useEffect(() => {
-    loadLogs();
-  }, []);
+  useEffect(() => { loadLogs(); }, []);
 
   const runScraper = async (s: Scraper) => {
     setRunning((r) => ({ ...r, [s.fn]: true }));
@@ -77,84 +83,88 @@ export default function Sources() {
     }
   };
 
+  const runEnrichment = async () => {
+    setRunning((r) => ({ ...r, "enrich-tenders": true }));
+    toast.info("Running enrichment batch...");
+    try {
+      const { data, error } = await supabase.functions.invoke("enrich-tenders", { body: { batchSize: 10 } });
+      if (error) throw error;
+      const d = data as any;
+      toast.success("Enrichment finished", {
+        description: `Processed ${d?.processed ?? 0} · enriched ${d?.enriched ?? 0} · failed ${d?.failed ?? 0}`,
+      });
+    } catch (e: any) {
+      toast.error("Enrichment failed", { description: e?.message ?? "Unknown error" });
+    } finally {
+      setRunning((r) => ({ ...r, "enrich-tenders": false }));
+    }
+  };
+
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
-      <div className="flex items-start justify-between">
+    <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
+
+      {/* ── Header ── */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 style={{ fontFamily: "serif" }} className="text-2xl font-semibold tracking-tight text-foreground">Sources</h1>
+          <h1 style={{ fontFamily: "serif" }} className="text-2xl font-semibold tracking-tight text-foreground">
+            Sources
+          </h1>
           <p className="text-sm text-muted-foreground mt-1">
             Run scrapers manually and review their execution history.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={!!running["enrich-tenders"]}
-            onClick={async () => {
-              setRunning((r) => ({ ...r, "enrich-tenders": true }));
-              toast.info("Running enrichment batch...");
-              try {
-                const { data, error } = await supabase.functions.invoke("enrich-tenders", {
-                  body: { batchSize: 10 },
-                });
-                if (error) throw error;
-                const d = data as any;
-                toast.success("Enrichment finished", {
-                  description: `Processed ${d?.processed ?? 0} · enriched ${d?.enriched ?? 0} · failed ${d?.failed ?? 0}`,
-                });
-              } catch (e: any) {
-                toast.error("Enrichment failed", { description: e?.message ?? "Unknown error" });
-              } finally {
-                setRunning((r) => ({ ...r, "enrich-tenders": false }));
-              }
-            }}
-          >
-            {running["enrich-tenders"] ? (
-              <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
-            ) : (
-              <Play className="h-3.5 w-3.5 mr-1.5" />
-            )}
-            Run enrichment
-          </Button>
-          
-        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={!!running["enrich-tenders"]}
+          onClick={runEnrichment}
+          className="self-start sm:self-auto shrink-0"
+        >
+          {running["enrich-tenders"] ? (
+            <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+          ) : (
+            <Play className="h-3.5 w-3.5 mr-1.5" />
+          )}
+          Run enrichment
+        </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* ── Scraper cards ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {SCRAPERS.map((s) => {
           const last = logs.find((l) => l.source?.toLowerCase().includes(s.source));
           const isRunning = !!running[s.fn];
           return (
-            <Card key={s.fn} className="p-5">
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="h-9 w-9 rounded-md bg-secondary flex items-center justify-center">
+            <Card key={s.fn} className="p-4 sm:p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="h-9 w-9 rounded-md bg-secondary flex items-center justify-center shrink-0">
                     <Globe className="h-4 w-4 text-muted-foreground" />
                   </div>
-                  <div>
-                    <div className="font-medium text-foreground">{s.label}</div>
-                    <div className="text-xs text-muted-foreground font-mono">{s.fn}</div>
+                  <div className="min-w-0">
+                    <div className="font-medium text-foreground text-sm truncate">{s.label}</div>
+                    <div className="text-xs text-muted-foreground font-mono truncate">{s.fn}</div>
                   </div>
                 </div>
-                <Button size="sm" onClick={() => runScraper(s)} disabled={isRunning}>
+                <Button size="sm" onClick={() => runScraper(s)} disabled={isRunning} className="shrink-0">
                   {isRunning ? (
                     <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
                   ) : (
                     <Play className="h-3.5 w-3.5 mr-1.5" />
                   )}
-                  Run now
+                  Run
                 </Button>
               </div>
+
               {last && (
-                <div className="mt-4 pt-4 border-t border-border text-xs text-muted-foreground space-y-1">
+                <div className="mt-4 pt-4 border-t border-border text-xs text-muted-foreground space-y-1.5">
                   <div className="flex justify-between">
                     <span>Last run</span>
                     <span className="text-foreground">
                       {last.ran_at ? formatDistanceToNow(new Date(last.ran_at), { addSuffix: true }) : "—"}
                     </span>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="flex justify-between items-center">
                     <span>Status</span>
                     <span className={`px-1.5 py-0.5 rounded border text-[10px] ${statusVariant(last.status)}`}>
                       {last.status}
@@ -171,11 +181,14 @@ export default function Sources() {
         })}
       </div>
 
+      {/* ── Recent runs ── */}
       <Card className="overflow-hidden">
         <div className="px-4 py-3 border-b border-border">
           <h2 className="text-sm font-medium text-foreground">Recent runs</h2>
         </div>
-        <div className="overflow-x-auto">
+
+        {/* Desktop table (md+) */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-secondary/40 text-xs text-muted-foreground">
               <tr>
@@ -203,7 +216,7 @@ export default function Sources() {
                 </tr>
               ) : (
                 logs.map((l) => (
-                  <tr key={l.id} className="border-t border-border">
+                  <tr key={l.id} className="border-t border-border hover:bg-muted/30 transition-colors">
                     <td className="px-4 py-2 font-medium text-foreground">{l.source}</td>
                     <td className="px-4 py-2">
                       <span className={`inline-block px-1.5 py-0.5 rounded border text-[10px] ${statusVariant(l.status)}`}>
@@ -226,6 +239,59 @@ export default function Sources() {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile log cards (< md) */}
+        <div className="md:hidden divide-y divide-border/60">
+          {loading ? (
+            <div className="px-4 py-8 text-center text-sm text-muted-foreground">
+              Loading...
+            </div>
+          ) : logs.length === 0 ? (
+            <div className="px-4 py-8 text-center text-sm text-muted-foreground">
+              No runs yet. Tap "Run" above to start a scraper.
+            </div>
+          ) : (
+            logs.map((l) => (
+              <div key={l.id} className="px-4 py-3.5 space-y-2">
+                {/* Row 1: source + status */}
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[13px] font-medium text-foreground truncate">{l.source}</span>
+                  <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded border text-[10px] shrink-0 ${statusVariant(l.status)}`}>
+                    <StatusIcon status={l.status} />
+                    {l.status}
+                  </span>
+                </div>
+
+                {/* Row 2: stats chips */}
+                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                  <span>
+                    <span className="text-foreground font-medium">{l.records_inserted ?? "—"}</span> inserted
+                  </span>
+                  <span>
+                    <span className="text-foreground font-medium">{l.records_found ?? "—"}</span> found
+                  </span>
+                  {l.duration_ms != null && (
+                    <span>
+                      <span className="text-foreground font-medium">{(l.duration_ms / 1000).toFixed(1)}s</span>
+                    </span>
+                  )}
+                  {l.ran_at && (
+                    <span className="text-muted-foreground">
+                      {formatDistanceToNow(new Date(l.ran_at), { addSuffix: true })}
+                    </span>
+                  )}
+                </div>
+
+                {/* Row 3: error if any */}
+                {l.error_message && (
+                  <p className="text-[11px] text-destructive line-clamp-2 font-mono bg-destructive/5 rounded px-2 py-1">
+                    {l.error_message}
+                  </p>
+                )}
+              </div>
+            ))
+          )}
         </div>
       </Card>
     </div>

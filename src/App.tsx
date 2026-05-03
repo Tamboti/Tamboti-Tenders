@@ -5,10 +5,13 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { AppLayout } from "@/components/layout/AppLayout";
+import RequireAuth from "@/components/auth/RequireAuth";
 import Tenders from "./pages/Tenders";
 import TenderDetailPage from "./pages/TenderDetailPage";
 import Alerts from "./pages/Alerts";
 import Sources from "./pages/Sources";
+import Bookmarks from "./pages/Bookmarks";
+import Login from "./pages/Login";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -21,11 +24,15 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <Routes>
-            <Route element={<AppLayout />}>
-              <Route path="/" element={<Tenders />} />
-              <Route path="/tender/:id" element={<TenderDetailPage />} />
-              <Route path="/alerts" element={<Alerts />} />
-              <Route path="/sources" element={<Sources />} />
+            <Route path="/login" element={<Login />} />
+            <Route element={<RequireAuth />}>
+              <Route element={<AppLayout />}>
+                <Route path="/" element={<Tenders />} />
+                <Route path="/tender/:id" element={<TenderDetailPage />} />
+                <Route path="/alerts" element={<Alerts />} />
+                <Route path="/sources" element={<Sources />} />
+                <Route path="/bookmarks" element={<Bookmarks />} />
+              </Route>
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
