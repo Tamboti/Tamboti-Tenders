@@ -146,6 +146,9 @@ export type Database = {
           created_at: string | null
           deadline: string | null
           description: string | null
+          enriched_at: string | null
+          enrichment_attempts: number
+          enrichment_error: string | null
           enrichment_status: string
           estimated_value_usd: number | null
           id: string
@@ -177,6 +180,9 @@ export type Database = {
           created_at?: string | null
           deadline?: string | null
           description?: string | null
+          enriched_at?: string | null
+          enrichment_attempts?: number
+          enrichment_error?: string | null
           enrichment_status?: string
           estimated_value_usd?: number | null
           id?: string
@@ -208,6 +214,9 @@ export type Database = {
           created_at?: string | null
           deadline?: string | null
           description?: string | null
+          enriched_at?: string | null
+          enrichment_attempts?: number
+          enrichment_error?: string | null
           enrichment_status?: string
           estimated_value_usd?: number | null
           id?: string
