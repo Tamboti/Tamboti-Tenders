@@ -86,10 +86,40 @@ export default function Sources() {
             Run scrapers manually and review their execution history.
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={loadLogs}>
-          <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!!running["enrich-tenders"]}
+            onClick={async () => {
+              setRunning((r) => ({ ...r, "enrich-tenders": true }));
+              toast.info("Running enrichment batch...");
+              try {
+                const { data, error } = await supabase.functions.invoke("enrich-tenders", {
+                  body: { batchSize: 10 },
+                });
+                if (error) throw error;
+                const d = data as any;
+                toast.success("Enrichment finished", {
+                  description: `Processed ${d?.processed ?? 0} · enriched ${d?.enriched ?? 0} · failed ${d?.failed ?? 0}`,
+                });
+              } catch (e: any) {
+                toast.error("Enrichment failed", { description: e?.message ?? "Unknown error" });
+              } finally {
+                setRunning((r) => ({ ...r, "enrich-tenders": false }));
+              }
+            }}
+          >
+            {running["enrich-tenders"] ? (
+              <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+            ) : (
+              <Play className="h-3.5 w-3.5 mr-1.5" />
+            )}
+            Run enrichment
+          </Button>
+          <Button variant="outline" size="sm" onClick={loadLogs}>
+            <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+            Refresh
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
