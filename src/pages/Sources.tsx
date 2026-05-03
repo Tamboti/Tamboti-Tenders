@@ -28,7 +28,7 @@ type Scraper = {
 const SCRAPERS: Scraper[] = [
   { fn: "tnz-scrapper", label: "Tanzania Scraper", country: "Tanzania", source: "tanzania" },
   { fn: "zm-scrapper", label: "Zambia Scraper", country: "Zambia", source: "zambia" },
-  { fn: "undp-scrapper", label: "UNDP Scraper", country: "Global", source: "undp" },
+  { fn: "Undp-scraper", label: "UNDP Scraper", country: "Global", source: "undp" },
 ];
 
 const statusVariant = (s: string) => {
@@ -81,7 +81,7 @@ export default function Sources() {
     <div className="p-6 max-w-6xl mx-auto space-y-6">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Sources</h1>
+          <h1 style={{ fontFamily: "serif" }} className="text-2xl font-semibold tracking-tight text-foreground">Sources</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Run scrapers manually and review their execution history.
           </p>
@@ -117,10 +117,7 @@ export default function Sources() {
             )}
             Run enrichment
           </Button>
-          <Button variant="outline" size="sm" onClick={loadLogs}>
-            <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
-            Refresh
-          </Button>
+          
         </div>
       </div>
 

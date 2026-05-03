@@ -3,16 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
-import { Trash2, Plus, Bell } from "lucide-react";
+import { Trash2, Plus, Bell, SlidersHorizontal } from "lucide-react";
 import { handleDbError } from "@/lib/dbError";
 import { toast } from "sonner";
 import { formatDate } from "@/lib/format";
@@ -98,115 +90,156 @@ const Alerts = () => {
   };
 
   return (
-    <div className="p-6 lg:p-8 max-w-4xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Email alerts</h1>
-        <p className="text-sm text-muted-foreground">
+    <div className="px-6 py-10 lg:px-10  mx-auto space-y-10">
+
+      {/* Header */}
+      <div className="space-y-1">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-zinc-400">
+          Notifications
+        </p>
+        <h1 style={{ fontFamily: "serif" }} className="text-2xl font-semibold tracking-tight text-foreground">
+          Email alerts
+        </h1>
+        <p className="text-sm text-zinc-500 leading-relaxed">
           Get notified when new tenders match your criteria.
         </p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">New alert rule</CardTitle>
-          <CardDescription>Leave fields blank to match anything.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-            <div className="space-y-1">
-              <Label className="text-xs">Country</Label>
-              <Input value={country} onChange={(e) => setCountry(e.target.value)} placeholder="e.g. CZ" />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Category</Label>
-              <Input
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                placeholder="e.g. IT services"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Keyword</Label>
-              <Input
-                value={keyword}
-                onChange={(e) => setKeyword(e.target.value)}
-                placeholder="cloud, security…"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Min value (USD)</Label>
-              <Input
-                type="number"
-                value={minValue}
-                onChange={(e) => setMinValue(e.target.value)}
-                placeholder="100000"
-              />
-            </div>
+      {/* New rule card */}
+      <div className="rounded-2xl border border-zinc-200 bg-white shadow-[0_1px_4px_rgba(0,0,0,0.06)] overflow-hidden">
+        {/* Card header */}
+        <div className="flex items-center gap-3 px-6 py-4 border-b border-zinc-100">
+          <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-zinc-100">
+            <SlidersHorizontal className="w-3.5 h-3.5 text-zinc-500" />
           </div>
-          <div className="mt-4 flex justify-end">
-            <Button onClick={add} disabled={adding}>
-              <Plus className="h-4 w-4 mr-1" /> Add rule
-            </Button>
+          <div>
+            <p className="text-sm font-medium text-zinc-800">New alert rule</p>
+            <p className="text-xs text-zinc-400">Leave any field blank to match anything</p>
           </div>
-        </CardContent>
-      </Card>
+        </div>
 
+        {/* Fields */}
+        <div className="px-6 py-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[
+            { label: "Country", value: country, set: setCountry, placeholder: "e.g. ZM" },
+            { label: "Category", value: category, set: setCategory, placeholder: "e.g. IT services" },
+            { label: "Keyword", value: keyword, set: setKeyword, placeholder: "cloud, security…" },
+            { label: "Min value (USD)", value: minValue, set: setMinValue, placeholder: "100,000", type: "number" },
+          ].map(({ label, value, set, placeholder, type }) => (
+            <div key={label} className="space-y-1.5">
+              <label className="text-[11px] font-semibold uppercase tracking-[0.08em] text-zinc-400">
+                {label}
+              </label>
+              <Input
+                type={type}
+                value={value}
+                onChange={(e) => set(e.target.value)}
+                placeholder={placeholder}
+                className="h-9 text-sm rounded-lg border-zinc-200 bg-zinc-50 placeholder:text-zinc-300 focus:bg-white focus:border-zinc-400 focus:ring-0 transition-colors"
+              />
+            </div>
+          ))}
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-4 border-t border-zinc-100 flex justify-end">
+          <Button
+            onClick={add}
+            disabled={adding}
+            className="h-9 px-4 text-sm font-medium rounded-lg bg-zinc-900 text-white hover:bg-zinc-700 active:scale-[0.98] transition-all shadow-none"
+          >
+            <Plus className="h-3.5 w-3.5 mr-1.5" />
+            {adding ? "Adding…" : "Add rule"}
+          </Button>
+        </div>
+      </div>
+
+      {/* Rules list */}
       <div className="space-y-3">
-        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-zinc-400">
           Your rules
-        </h2>
+        </p>
+
         {loading ? (
-          <div className="text-sm text-muted-foreground">Loading…</div>
+          <div className="space-y-2.5">
+            {[1, 2].map((i) => (
+              <div
+                key={i}
+                className="h-[72px] rounded-2xl border border-zinc-100 bg-zinc-50 animate-pulse"
+              />
+            ))}
+          </div>
         ) : rules.length === 0 ? (
-          <Card>
-            <CardContent className="py-10 text-center text-muted-foreground text-sm flex flex-col items-center gap-2">
-              <Bell className="h-6 w-6" />
-              No alerts yet. Create your first rule above.
-            </CardContent>
-          </Card>
+          <div className="rounded-2xl border border-zinc-200 bg-white shadow-[0_1px_4px_rgba(0,0,0,0.04)] py-14 flex flex-col items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-zinc-100 flex items-center justify-center">
+              <Bell className="w-4 h-4 text-zinc-400" />
+            </div>
+            <div className="text-center">
+              <p className="text-sm font-medium text-zinc-700">No alerts yet</p>
+              <p className="text-xs text-zinc-400 mt-0.5">Create your first rule above to get started.</p>
+            </div>
+          </div>
         ) : (
-          rules.map((r) => (
-            <Card key={r.id}>
-              <CardContent className="py-4 flex items-center justify-between gap-4 flex-wrap">
-                <div className="flex flex-wrap gap-x-6 gap-y-1 flex-1 min-w-0">
-                  <Field label="Country" value={r.country} />
-                  <Field label="Category" value={r.category} />
-                  <Field label="Keyword" value={r.keyword} />
-                  <Field
+          <div className="space-y-2.5">
+            {rules.map((r) => (
+              <div
+                key={r.id}
+                className="rounded-2xl border border-zinc-200 bg-white shadow-[0_1px_4px_rgba(0,0,0,0.05)] px-5 py-4 flex items-center justify-between gap-4 flex-wrap transition-shadow hover:shadow-[0_2px_8px_rgba(0,0,0,0.08)]"
+              >
+                {/* Fields */}
+                <div className="flex flex-wrap gap-x-7 gap-y-2 flex-1 min-w-0">
+                  <RuleField label="Country" value={r.country} />
+                  <RuleField label="Category" value={r.category} />
+                  <RuleField label="Keyword" value={r.keyword} />
+                  <RuleField
                     label="Min value"
                     value={r.min_value_usd ? `$${r.min_value_usd.toLocaleString()}` : null}
                   />
-                  <Field label="Created" value={formatDate(r.created_at)} />
+                  <RuleField label="Created" value={formatDate(r.created_at)} />
                 </div>
-                <div className="flex items-center gap-3">
+
+                {/* Actions */}
+                <div className="flex items-center gap-3 shrink-0">
                   <div className="flex items-center gap-2">
-                    <Switch checked={!!r.active} onCheckedChange={() => toggleActive(r)} />
-                    <span className="text-xs text-muted-foreground">
+                    <Switch
+                      checked={!!r.active}
+                      onCheckedChange={() => toggleActive(r)}
+                      className="data-[state=checked]:bg-zinc-900"
+                    />
+                    <span className="text-xs text-zinc-400 w-10">
                       {r.active ? "Active" : "Paused"}
                     </span>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
+                  <button
                     onClick={() => remove(r.id)}
-                    className="text-muted-foreground hover:text-destructive"
+                    className="w-7 h-7 rounded-lg flex items-center justify-center text-zinc-300 hover:bg-red-50 hover:text-red-400 transition-colors"
                   >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
                 </div>
-              </CardContent>
-            </Card>
-          ))
+              </div>
+            ))}
+          </div>
         )}
       </div>
     </div>
   );
 };
 
-const Field = ({ label, value }: { label: string; value: string | null | undefined }) => (
-  <div>
-    <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
-    <div className="text-sm font-medium">{value || "Any"}</div>
+const RuleField = ({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | null | undefined;
+}) => (
+  <div className="min-w-0">
+    <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-zinc-400 mb-0.5">
+      {label}
+    </p>
+    <p className={`text-sm font-medium truncate ${value ? "text-zinc-800" : "text-zinc-300"}`}>
+      {value ?? "Any"}
+    </p>
   </div>
 );
 
