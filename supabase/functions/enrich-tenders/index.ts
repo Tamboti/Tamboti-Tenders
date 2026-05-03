@@ -357,8 +357,6 @@ Deno.serve(async (req): Promise<Response> => {
         failed++;
         const msg = (e as Error).message;
         log.warn("Enrichment failed", { id: r.id, source: r.source, error: msg });
-        await supabase.rpc as unknown;
-        // Increment attempts and store error using a follow-up query
         const { data: cur } = await supabase
           .from("tenders")
           .select("enrichment_attempts")
