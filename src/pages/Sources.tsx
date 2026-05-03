@@ -120,7 +120,8 @@ export default function Sources() {
           <Button variant="outline" size="sm" onClick={loadLogs}>
             <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
             Refresh
-      </div>
+          </Button>
+        </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {SCRAPERS.map((s) => {
