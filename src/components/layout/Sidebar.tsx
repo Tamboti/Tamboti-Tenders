@@ -131,14 +131,14 @@ export const Sidebar = ({ mobile = false, onNavigate }: SidebarProps) => {
   );
 
   if (mobile) {
-    return <aside className="bg-gray-50 flex flex-col h-full overflow-hidden">{content}</aside>;
+    return <aside className="flex h-full flex-col overflow-hidden bg-transparent">{content}</aside>;
   }
 
   return (
     <motion.aside
       animate={{ width: collapsed ? 64 : 220 }}
       transition={{ type: "spring", stiffness: 260, damping: 30 }}
-      className="bg-gray-50 hidden md:flex flex-col h-screen sticky top-0 py-4 overflow-hidden"
+      className="hidden h-screen flex-col overflow-hidden bg-transparent py-4 md:flex"
     >
       {content}
     </motion.aside>

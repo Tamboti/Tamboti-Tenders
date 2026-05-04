@@ -90,8 +90,8 @@
 
 @layer base {
   :root {
-    --font-ui: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
-    --font-numeric: "IBM Plex Sans", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-ui: "Fira Code", ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas, monospace;
+    --font-numeric: "Fira Code", ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas, monospace;
   }
 
   * {
@@ -101,7 +101,7 @@
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-ui);
-    font-feature-settings: "cv11", "ss01";
+    font-feature-settings: "liga" 1, "calt" 1;
     -webkit-font-smoothing: antialiased;
   }
 }
@@ -110,5 +110,13 @@
   .font-numeric {
     font-family: var(--font-numeric);
     font-variant-numeric: tabular-nums;
+  }
+
+  /** Same warm wash as the login page — full app shell */
+  .bg-app-warm-glow {
+    background-image:
+      radial-gradient(circle at 50% 100%, rgb(253 224 71 / 0.4) 0%, transparent 60%),
+      radial-gradient(circle at 50% 100%, rgb(251 191 36 / 0.4) 0%, transparent 70%),
+      radial-gradient(circle at 50% 100%, rgb(244 114 182 / 0.5) 0%, transparent 80%);
   }
 }
