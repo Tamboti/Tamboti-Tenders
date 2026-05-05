@@ -112,6 +112,11 @@
     font-variant-numeric: tabular-nums;
   }
 
+  /** Page `<h1>` — Inter only, no system serif */
+  .page-title {
+    @apply text-2xl font-semibold tracking-tight text-foreground;
+  }
+
   /** Same warm wash as the login page — full app shell */
   .bg-app-warm-glow {
     background-image:

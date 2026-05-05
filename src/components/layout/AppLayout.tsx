@@ -6,15 +6,13 @@ import { TopBar } from "./TopBar";
 export const AppLayout = () => {
   const location = useLocation();
   return (
-    <div className="relative h-screen overflow-hidden bg-white">
-      <div className="pointer-events-none absolute inset-0 z-0 bg-app-warm-glow" aria-hidden />
-
-      <div className="relative z-10 flex h-full min-h-0">
+    <div className="h-screen overflow-hidden bg-muted/40">
+      <div className="flex h-full min-h-0">
         <Sidebar />
 
         <div className="flex min-h-0 min-w-0 flex-1">
-          <div className="flex flex-1 justify-center p-4">
-            <div className="flex h-full w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-gray-200/80 bg-background shadow-sm">
+          <div className="flex flex-1 justify-center md:p-4">
+            <div className="flex h-full w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-sm">
               <div className="md:hidden">
                 <TopBar />
               </div>

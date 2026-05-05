@@ -5,6 +5,7 @@ import { Tender } from "@/lib/types";
 import { TenderDetail } from "@/components/tender/TenderDetail";
 import { ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { PageContainer } from "@/components/layout/PageContainer";
 
 /* ─── Shimmer primitive ──────────────────────────────────────────── */
 
@@ -121,7 +122,7 @@ const TenderDetailPage = () => {
   useEffect(() => { load(); }, [id]);
 
   return (
-    <div className="p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
+    <PageContainer className="max-w-5xl space-y-6">
 
       {/* ── Back button ── */}
       <button
@@ -142,7 +143,7 @@ const TenderDetailPage = () => {
         <TenderDetail tender={tender} onChanged={load} />
       )}
 
-    </div>
+    </PageContainer>
   );
 };
 

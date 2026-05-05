@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { BookmarkCheck, BookmarkX, ExternalLink, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,8 +9,16 @@ import { handleDbError } from "@/lib/dbError";
 import { formatDate, daysUntil } from "@/lib/format";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { StatusBadge } from "@/components/StatusBadge";
 import { cn } from "@/lib/utils";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -20,6 +28,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+
+const PAGE_SIZE = 20;
 
 /* ── Deadline pill (reused from Tenders) ────────────────────────── */
 const DeadlinePill = ({ deadline }: { deadline: string | null }) => {
@@ -109,6 +119,47 @@ const Bookmarks = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const uid = user?.id ?? getAnonUserId();
+  const [search, setSearch] = useState("");
+  const [country, setCountry] = useState("all");
+  const [status, setStatus] = useState("all");
+  const [sort, setSort] = useState<"deadline-asc" | "deadline-desc">("deadline-asc");
+  const [page, setPage] = useState(0);
+
+  // Auto-refresh when bookmarks or tenders change in DB.
+  useEffect(() => {
+    const bookmarksChannel = supabase
+      .channel(`rt:bookmarks-page:${uid}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "tender_bookmarks",
+          filter: `user_id=eq.${uid}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["bookmarks-page", uid] });
+          queryClient.invalidateQueries({ queryKey: ["tender-bookmarks", uid] });
+        }
+      )
+      .subscribe();
+
+    const tendersChannel = supabase
+      .channel("rt:tenders:bookmarks-page")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "tenders" },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["bookmarks-page", uid] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(bookmarksChannel);
+      void supabase.removeChannel(tendersChannel);
+    };
+  }, [queryClient, uid]);
 
   const bookmarksQuery = useQuery({
     queryKey: ["bookmarks-page", uid],
@@ -134,6 +185,8 @@ const Bookmarks = () => {
     staleTime: 60_000,
     gcTime: 10 * 60_000,
     refetchOnWindowFocus: false,
+    // When navigating back to this page, always refetch so users see new bookmarks immediately.
+    refetchOnMount: "always",
   });
 
   const removeBookmark = async (tenderId: string, e?: React.MouseEvent) => {
@@ -161,28 +214,114 @@ const Bookmarks = () => {
   const tenders = bookmarksQuery.data ?? [];
   const loading = bookmarksQuery.isLoading;
 
+  const countries = useMemo(() => {
+    const vals = tenders.map((t) => t.country).filter(Boolean) as string[];
+    return ["all", ...Array.from(new Set(vals)).sort()];
+  }, [tenders]);
+
+  const statuses = useMemo(() => {
+    const vals = tenders.map((t) => t.workflow_status).filter(Boolean) as string[];
+    return ["all", ...Array.from(new Set(vals)).sort()];
+  }, [tenders]);
+
+  const filtered = useMemo(() => {
+    const s = search.trim().toLowerCase();
+    return tenders.filter((t) => {
+      if (country !== "all" && (t.country ?? "") !== country) return false;
+      if (status !== "all" && (t.workflow_status ?? "") !== status) return false;
+      if (!s) return true;
+      const hay = `${t.title ?? ""} ${t.procuring_entity ?? ""} ${t.reference_number ?? ""}`.toLowerCase();
+      return hay.includes(s);
+    });
+  }, [tenders, search, country, status]);
+
+  const sorted = useMemo(() => {
+    const items = [...filtered];
+    items.sort((a, b) => {
+      const ta = a.deadline ? new Date(a.deadline).getTime() : Number.POSITIVE_INFINITY;
+      const tb = b.deadline ? new Date(b.deadline).getTime() : Number.POSITIVE_INFINITY;
+      return sort === "deadline-asc" ? ta - tb : tb - ta;
+    });
+    return items;
+  }, [filtered, sort]);
+
+  useEffect(() => {
+    setPage(0);
+  }, [search, country, status, sort]);
+
+  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+  const pageItems = sorted.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
+
   return (
     <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
 
       {/* ── Header ── */}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 style={{ fontFamily: "serif" }} className="text-2xl font-semibold tracking-tight text-foreground">
-            Bookmarks
-          </h1>
+          <h1 className="page-title">Bookmarks</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Your saved tenders for quick follow-up.
           </p>
         </div>
-        {!loading && tenders.length > 0 && (
+        {!loading && sorted.length > 0 && (
           <div className="text-sm text-muted-foreground shrink-0">
-            Saved: <span className="font-semibold text-foreground">{tenders.length}</span>
+            Saved: <span className="font-semibold text-foreground">{sorted.length}</span>
           </div>
         )}
       </div>
 
+      {/* ── Controls ── */}
+      <div className="flex flex-col gap-3 md:flex-row md:items-center">
+        <div className="flex-1">
+          <Input
+            placeholder="Search title, entity, reference…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="h-10 rounded-lg"
+          />
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <Select value={country} onValueChange={setCountry} disabled={loading}>
+            <SelectTrigger className="h-10 w-[180px] rounded-lg border border-border bg-background text-sm">
+              <SelectValue placeholder="Country" />
+            </SelectTrigger>
+            <SelectContent>
+              {countries.map((c) => (
+                <SelectItem key={c} value={c}>
+                  {c === "all" ? "All countries" : c}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={status} onValueChange={setStatus} disabled={loading}>
+            <SelectTrigger className="h-10 w-[170px] rounded-lg border border-border bg-background text-sm">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              {statuses.map((s) => (
+                <SelectItem key={s} value={s}>
+                  {s === "all" ? "All statuses" : s}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={sort} onValueChange={(v) => setSort(v as any)} disabled={loading}>
+            <SelectTrigger className="h-10 w-[190px] rounded-lg border border-border bg-background text-sm">
+              <SelectValue placeholder="Sort" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="deadline-asc">Deadline: soonest</SelectItem>
+              <SelectItem value="deadline-desc">Deadline: latest</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
       {/* ── Desktop table (md+) ── */}
-      <div className="hidden md:block overflow-hidden rounded-lg border border-gray-200 shadow-sm">
+      <div className="hidden md:block overflow-hidden rounded-lg border border-border shadow-sm">
         <Table>
           <TableHeader>
             <TableRow>
@@ -196,14 +335,20 @@ const Bookmarks = () => {
           <TableBody>
             {loading ? (
               <SkeletonRows />
-            ) : tenders.length === 0 ? (
+            ) : pageItems.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={5} className="py-0">
-                  <EmptyState />
+                  {sorted.length === 0 ? (
+                    <EmptyState />
+                  ) : (
+                    <div className="py-14 text-center text-sm text-muted-foreground">
+                      No results. Try clearing filters or search.
+                    </div>
+                  )}
                 </TableCell>
               </TableRow>
             ) : (
-              tenders.map((t) => {
+              pageItems.map((t) => {
                 const dueIn = daysUntil(t.deadline);
                 return (
                   <TableRow
@@ -254,14 +399,20 @@ const Bookmarks = () => {
       </div>
 
       {/* ── Mobile card list (< md) ── */}
-      <div className="md:hidden overflow-hidden rounded-xl border border-gray-200 shadow-sm bg-background">
+      <div className="md:hidden overflow-hidden rounded-xl border border-border bg-background shadow-sm">
         {loading ? (
           <SkeletonCards />
-        ) : tenders.length === 0 ? (
-          <EmptyState />
+        ) : pageItems.length === 0 ? (
+          sorted.length === 0 ? (
+            <EmptyState />
+          ) : (
+            <div className="py-12 px-4 text-center text-sm text-muted-foreground">
+              No results. Try clearing filters or search.
+            </div>
+          )
         ) : (
           <div className="divide-y divide-border/50">
-            {tenders.map((t) => (
+            {pageItems.map((t) => (
               <div
                 key={t.id}
                 className="px-4 py-4 space-y-3 cursor-pointer active:bg-muted/40 transition-colors"
@@ -321,6 +472,37 @@ const Bookmarks = () => {
           </div>
         )}
       </div>
+
+      {/* ── Pagination ── */}
+      {!loading && sorted.length > PAGE_SIZE && (
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-muted-foreground">
+            Showing{" "}
+            <span className="font-medium text-foreground">
+              {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, sorted.length)}
+            </span>{" "}
+            of <span className="font-medium text-foreground">{sorted.length}</span>
+          </p>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page === 0}
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+            >
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page >= totalPages - 1}
+              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      )}
 
     </div>
   );

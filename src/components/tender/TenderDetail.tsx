@@ -20,6 +20,7 @@ import {
   Clock,
   Layers,
   Globe,
+  Sparkles,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { handleDbError } from "@/lib/dbError";
@@ -67,6 +68,12 @@ const DeadlineBadge = ({ days }: { days: number | null }) => {
 };
 
 const Divider = () => <hr className="border-border/60" />;
+
+const LanguageTag = ({ label }: { label: string }) => (
+  <span className="inline-flex items-center rounded-full border border-border bg-background/70 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+    {label}
+  </span>
+);
 
 /* ─── main component ────────────────────────────────────────────── */
 
@@ -134,6 +141,10 @@ export const TenderDetail = ({
     tender.original_currency && {
       label: "Currency",
       value: tender.original_currency,
+    },
+    tender.participation_fee && {
+      label: "Participation fee",
+      value: `${tender.participation_fee} ${tender.original_currency}`,
     },
     (tender.location_region || tender.location_district) && {
       icon: MapPin,
@@ -217,20 +228,53 @@ export const TenderDetail = ({
       {(tender.summary_en || tender.summary_cs) && (
         <>
           <Divider />
-          <div className="space-y-3">
-            <h3 className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
-              AI Summary
-            </h3>
-            {tender.summary_en && (
-              <p className="rounded-xl border border-border bg-muted/30 px-4 py-3 text-sm leading-relaxed text-foreground">
-                {tender.summary_en}
-              </p>
-            )}
-            {tender.summary_cs && (
-              <p className="rounded-xl border border-border bg-muted/30 px-4 py-3 text-sm leading-relaxed text-foreground">
-                {tender.summary_cs}
-              </p>
-            )}
+          <div className="space-y-3 ">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                
+                <h3 className="text-xs font-semibold tracking-wide text-foreground">
+                  AI summary
+                </h3>
+              </div>
+              <div className="flex items-center gap-2">
+                {tender.summary_en && <LanguageTag label="English (EN)" />}
+                {tender.summary_cs && <LanguageTag label="Czech (CS)" />}
+              </div>
+            </div>
+
+            <div className="rounded-r-md border-l-4 border border-primary/15 bg-gradient-to-br from-primary/[0.06] via-background to-muted/30 px-4 py-3.5 shadow-sm">
+              <div className="space-y-3">
+                {tender.summary_en && (
+                  <div className="space-y-1.5">
+                    {tender.summary_cs && (
+                      <div className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+                        English (EN)
+                      </div>
+                    )}
+                    <p className="text-sm leading-relaxed text-foreground/90 whitespace-pre-wrap">
+                      {tender.summary_en}
+                    </p>
+                  </div>
+                )}
+
+                {tender.summary_en && tender.summary_cs && (
+                  <hr className="border-border/60" />
+                )}
+
+                {tender.summary_cs && (
+                  <div className="space-y-1.5">
+                    {tender.summary_en && (
+                      <div className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+                        Czech (CS)
+                      </div>
+                    )}
+                    <p className="text-sm leading-relaxed text-foreground/90 whitespace-pre-wrap">
+                      {tender.summary_cs}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </>
       )}

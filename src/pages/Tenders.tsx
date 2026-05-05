@@ -67,6 +67,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { PageContainer } from "@/components/layout/PageContainer";
 
 const PAGE_SIZE = 50;
 
@@ -193,7 +194,7 @@ const TenderCard = ({
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.18, delay: Math.min(idx * 0.03, 0.25) }}
-      className="relative px-4 py-4 cursor-pointer active:bg-muted/40 transition-colors border-b border-border/50 last:border-0"
+      className="relative  py-4 cursor-pointer active:bg-muted/40 transition-colors border-b border-border/50 last:border-0"
       onClick={onClick}
       role="button"
       tabIndex={0}
@@ -321,6 +322,47 @@ const Tenders = () => {
   const isAdmin = role === "admin";
   const uid = user?.id ?? getAnonUserId();
 
+  // Keep cached lists fresh when the DB changes (no manual refresh).
+  useEffect(() => {
+    const tendersChannel = supabase
+      .channel("rt:tenders")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "tenders",
+          filter: "enrichment_status=eq.enriched",
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["tenders-list"] });
+          queryClient.invalidateQueries({ queryKey: ["tenders-facets"] });
+        }
+      )
+      .subscribe();
+
+    const bookmarksChannel = supabase
+      .channel(`rt:tender_bookmarks:${uid}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "tender_bookmarks",
+          filter: `user_id=eq.${uid}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["tender-bookmarks", uid] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(tendersChannel);
+      void supabase.removeChannel(bookmarksChannel);
+    };
+  }, [queryClient, uid]);
+
   useEffect(() => {
     const timeout = setTimeout(() => setDebouncedSearch(search), 350);
     return () => clearTimeout(timeout);
@@ -418,6 +460,8 @@ const Tenders = () => {
         queryClient.setQueryData(["tender-bookmarks", uid], n);
         return n;
       });
+      // Ensure Bookmarks page refreshes even within staleTime.
+      queryClient.invalidateQueries({ queryKey: ["bookmarks-page", uid] });
     } else {
       const { error } = await supabase
         .from("tender_bookmarks").insert({ user_id: uid, tender_id: tenderId });
@@ -427,6 +471,8 @@ const Tenders = () => {
         queryClient.setQueryData(["tender-bookmarks", uid], n);
         return n;
       });
+      // Ensure Bookmarks page refreshes even within staleTime.
+      queryClient.invalidateQueries({ queryKey: ["bookmarks-page", uid] });
     }
   };
 
@@ -467,7 +513,7 @@ const Tenders = () => {
   const FilterControls = ({ compact = false }: { compact?: boolean }) => (
     <>
       <Select value={country} onValueChange={setCountry}>
-        <SelectTrigger className={cn("text-sm shadow-sm rounded-lg border border-gray-200", compact ? "h-10 w-full" : "w-[148px] h-9")}>
+        <SelectTrigger className={cn("text-sm shadow-sm rounded-lg border border-border", compact ? "h-10 w-full" : "w-[148px] h-9")}>
           <Globe className="h-3.5 w-3.5 mr-1.5 text-muted-foreground shrink-0" />
           <SelectValue placeholder="Country" />
         </SelectTrigger>
@@ -478,7 +524,7 @@ const Tenders = () => {
       </Select>
 
       <Select value={category} onValueChange={setCategory}>
-        <SelectTrigger className={cn("text-sm shadow-sm rounded-lg border border-gray-200", compact ? "h-10 w-full" : "w-[168px] h-9")}>
+        <SelectTrigger className={cn("text-sm shadow-sm rounded-lg border border-border", compact ? "h-10 w-full" : "w-[168px] h-9")}>
           <SelectValue placeholder="Category" />
         </SelectTrigger>
         <SelectContent>
@@ -488,7 +534,7 @@ const Tenders = () => {
       </Select>
 
       <Select value={status} onValueChange={setStatus}>
-        <SelectTrigger className={cn("text-sm shadow-sm rounded-lg border border-gray-200", compact ? "h-10 w-full" : "w-[148px] h-9")}>
+        <SelectTrigger className={cn("text-sm shadow-sm rounded-lg border border-border", compact ? "h-10 w-full" : "w-[148px] h-9")}>
           <SelectValue placeholder="Status" />
         </SelectTrigger>
         <SelectContent>
@@ -500,15 +546,13 @@ const Tenders = () => {
   );
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6 sm:space-y-8">
+    <div className="w-full min-h-0">
+      <PageContainer className="space-y-6 sm:space-y-8">
 
         {/* ── Page header ── */}
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div className="space-y-1">
-            <h1 style={{ fontFamily: "serif" }} className="text-2xl font-semibold tracking-tight text-foreground">
-              Tenders
-            </h1>
+            <h1 className="page-title">Tenders</h1>
             <p className="text-sm text-muted-foreground">
               Browse and triage live procurement opportunities.
             </p>
@@ -517,26 +561,26 @@ const Tenders = () => {
           {/* Stats — horizontal scroll on very small screens */}
           <div className="flex items-center gap-5 sm:gap-6 overflow-x-auto pb-0.5 scrollbar-none">
             <Stat label="Total" value={total.toLocaleString()} />
-            <div className="pl-5 sm:pl-8 border-l border-border/50">
+            <div className="pl-5 sm:pl-8 ">
               <Stat label="Closing soon" value={urgentCount} />
             </div>
-            <div className="pl-5 sm:pl-8 border-l border-border/50">
+            <div className="pl-5 sm:pl-8">
               <Stat label="Saved" value={bookmarks.size} />
             </div>
           </div>
         </div>
 
-        {/* ── Filter bar ── */}
-
-        {/* Desktop filter bar (md+) */}
-        <div className="hidden md:flex flex-wrap gap-2 items-center">
-          <div className="relative flex-1 min-w-[260px] rounded-lg border border-gray-200">
+        {/* ── Filters (sticky layer) ── */}
+        <div className="sticky top-0 z-30 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-3 bg-background/85 backdrop-blur-md border-y border-border/60">
+          {/* Desktop filter bar (md+) */}
+          <div className="hidden md:flex flex-wrap gap-2 items-center">
+            <div className="relative flex-1 min-w-[260px] rounded-lg border border-border bg-background">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input
               placeholder="Search title, entity, reference…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-8 h-9 text-sm bg-background"
+              className="pl-8 h-9 text-sm bg-transparent"
             />
           </div>
           <FilterControls />
@@ -552,13 +596,13 @@ const Tenders = () => {
 
         {/* Mobile filter bar (< md): search + filter button */}
         <div className="flex md:hidden gap-2 items-center">
-          <div className="relative flex-1 rounded-lg border border-gray-200">
+          <div className="relative flex-1 rounded-lg border border-border bg-background">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input
               placeholder="Search tenders…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-8 h-10 text-sm bg-background"
+              className="pl-8 h-10 text-sm bg-transparent"
             />
           </div>
 
@@ -568,7 +612,7 @@ const Tenders = () => {
                 variant="outline"
                 size="sm"
                 className={cn(
-                  "h-10 gap-2 rounded-lg border border-gray-200 text-sm shrink-0",
+                  "h-10 gap-2 rounded-lg border border-border text-sm shrink-0",
                   activeFilters.length > 0 && "border-primary/60 text-primary bg-primary/5"
                 )}
               >
@@ -610,7 +654,7 @@ const Tenders = () => {
 
         {/* ── Active filter chips (shared) ── */}
         {activeFilters.length > 0 && (
-          <div className="flex gap-2 flex-wrap -mt-4">
+          <div className="flex gap-2 flex-wrap mt-3">
             {activeFilters.map((f) => (
               <span key={f} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/50 px-3 py-1 text-xs font-medium text-foreground">
                 {f}
@@ -618,30 +662,31 @@ const Tenders = () => {
             ))}
           </div>
         )}
+        </div>
 
         {/* ── Desktop table (md+) ── */}
-        <div className="hidden md:block overflow-hidden shadow-sm rounded-lg border border-gray-200 ring-1 ring-black/[0.04] dark:ring-white/[0.06]">
-          <Table className="border-separate border-spacing-0 [&_tr]:border-border/55">
+        <div className="hidden md:block overflow-hidden shadow-sm rounded-lg border border-border ring-1 ring-border/60 dark:ring-border">
+          <Table className="border-separate z-0 border-spacing-0 [&_tr]:border-border/55">
             <TableHeader className="[&_tr]:border-b [&_tr]:border-border/70 overflow-hidden">
               <TableRow className="border-0">
-                <TableHead className="sticky top-0 z-20 w-11 bg-muted/80 px-3 py-2.5 shadow-[inset_0_-1px_0_0_hsl(var(--border))] backdrop-blur-md supports-[backdrop-filter]:bg-muted/60" />
-                <TableHead className="sticky top-0 z-20 min-w-[11rem] bg-muted/80 px-3 py-2.5 text-sm font-semibold tracking-wide text-foreground shadow-[inset_0_-1px_0_0_hsl(var(--border))] backdrop-blur-md supports-[backdrop-filter]:bg-muted/60">
+                <TableHead className="sticky top-0 z-10 w-11 bg-muted/80 px-3 py-2.5 shadow-[inset_0_-1px_0_0_hsl(var(--border))] backdrop-blur-md supports-[backdrop-filter]:bg-muted/60" />
+                <TableHead className="sticky top-0 z-10 min-w-[11rem] bg-muted/80 px-3 py-2.5 text-sm font-semibold tracking-wide text-foreground shadow-[inset_0_-1px_0_0_hsl(var(--border))] backdrop-blur-md supports-[backdrop-filter]:bg-muted/60">
                   Tender
                 </TableHead>
-                <TableHead className="sticky top-0 z-20 hidden w-[7.5rem] bg-muted/80 px-3 py-2.5 text-ms font-medium tracking-wide text-muted-foreground shadow-[inset_0_-1px_0_0_hsl(var(--border))] backdrop-blur-md sm:table-cell supports-[backdrop-filter]:bg-muted/60">
+                <TableHead className="sticky top-0 z-10 hidden w-[7.5rem] bg-muted/80 px-3 py-2.5 text-ms font-medium tracking-wide text-muted-foreground shadow-[inset_0_-1px_0_0_hsl(var(--border))] backdrop-blur-md sm:table-cell supports-[backdrop-filter]:bg-muted/60">
                   Country
                 </TableHead>
-                <TableHead className="sticky top-0 z-20 hidden min-w-[8.5rem] bg-muted/80 px-3 py-2.5 text-ms font-medium tracking-wide text-muted-foreground shadow-[inset_0_-1px_0_0_hsl(var(--border))] backdrop-blur-md md:table-cell supports-[backdrop-filter]:bg-muted/60">
+                <TableHead className="sticky top-0 z-10 hidden min-w-[8.5rem] bg-muted/80 px-3 py-2.5 text-ms font-medium tracking-wide text-muted-foreground shadow-[inset_0_-1px_0_0_hsl(var(--border))] backdrop-blur-md md:table-cell supports-[backdrop-filter]:bg-muted/60">
                   Category
                 </TableHead>
-                <TableHead className="sticky top-0 z-20 w-[7.75rem] whitespace-nowrap bg-muted/80 px-3 py-2.5 text-ms font-medium tracking-wide text-muted-foreground shadow-[inset_0_-1px_0_0_hsl(var(--border))] backdrop-blur-md supports-[backdrop-filter]:bg-muted/60">
+                <TableHead className="sticky top-0 z-10 w-[7.75rem] whitespace-nowrap bg-muted/80 px-3 py-2.5 text-ms font-medium tracking-wide text-muted-foreground shadow-[inset_0_-1px_0_0_hsl(var(--border))] backdrop-blur-md supports-[backdrop-filter]:bg-muted/60">
                   Deadline
                 </TableHead>
-                <TableHead className="sticky top-0 z-20 w-[8.25rem] bg-muted/80 px-3 py-2.5 text-ms font-medium tracking-wide text-muted-foreground shadow-[inset_0_-1px_0_0_hsl(var(--border))] backdrop-blur-md supports-[backdrop-filter]:bg-muted/60">
+                <TableHead className="sticky top-0 z-10 w-[8.25rem] bg-muted/80 px-3 py-2.5 text-ms font-medium tracking-wide text-muted-foreground shadow-[inset_0_-1px_0_0_hsl(var(--border))] backdrop-blur-md supports-[backdrop-filter]:bg-muted/60">
                   Status
                 </TableHead>
                 {isAdmin && (
-                  <TableHead className="sticky top-0 z-20 w-11 bg-muted/80 px-2 py-2.5 shadow-[inset_0_-1px_0_0_hsl(var(--border))] backdrop-blur-md supports-[backdrop-filter]:bg-muted/60" />
+                  <TableHead className="sticky top-0 z-10 w-11 bg-muted/80 px-2 py-2.5 shadow-[inset_0_-1px_0_0_hsl(var(--border))] backdrop-blur-md supports-[backdrop-filter]:bg-muted/60" />
                 )}
               </TableRow>
             </TableHeader>
@@ -694,7 +739,7 @@ const Tenders = () => {
                           <button
                             type="button"
                             onClick={(e) => toggleBookmark(t.id, e)}
-                            className="relative z-10 inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                            className="relative z-0 inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                             aria-label={bookmarks.has(t.id) ? "Remove bookmark" : "Save tender"}
                           >
                             {bookmarks.has(t.id) ? (
@@ -837,7 +882,7 @@ const Tenders = () => {
         </div>
 
         {/* ── Mobile card list (< md) ── */}
-        <div className="md:hidden overflow-hidden rounded-xl border border-gray-200 shadow-sm ring-1 ring-black/[0.04]">
+        <div className="md:hidden overflow-hidden  ring-1 ring-border/50">
           {loading ? (
             <SkeletonCards />
           ) : tenders.length === 0 ? (
@@ -889,7 +934,7 @@ const Tenders = () => {
           </div>
         </div>
 
-      </div>
+      </PageContainer>
 
       {/* ── Dialogs ── */}
       <EditTenderDialog

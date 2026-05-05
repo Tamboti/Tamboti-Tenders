@@ -106,9 +106,7 @@ export default function Sources() {
       {/* ── Header ── */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 style={{ fontFamily: "serif" }} className="text-2xl font-semibold tracking-tight text-foreground">
-            Sources
-          </h1>
+          <h1 className="page-title">Sources</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Run scrapers manually and review their execution history.
           </p>

@@ -1,32 +1,11 @@
 import { NavLink } from "react-router-dom";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Globe, FileSearch, Bell, PanelLeft, Bookmark, LogOut, UserCircle2 } from "lucide-react";
+import { PanelLeft, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
-
-type NavItem = {
-  to: string;
-  label: string;
-  icon: React.ComponentType<{ className?: string }>;
-};
-
-type NavSection = {
-  heading?: string;
-  items: NavItem[];
-};
-
-const sections: NavSection[] = [
-  { heading: "Scrappers", items: [{ to: "/sources", label: "Sources", icon: Globe }] },
-  {
-    heading: "Observe",
-    items: [
-      { to: "/", label: "Tenders", icon: FileSearch },
-      { to: "/bookmarks", label: "Bookmarks", icon: Bookmark },
-    ],
-  },
-  { heading: "Engage", items: [{ to: "/alerts", label: "Alerts", icon: Bell }] },
-];
+import { NAV_SECTIONS } from "./nav.ts";
+import { AvatarInitial } from "@/components/AvatarInitial";
 
 type SidebarProps = {
   mobile?: boolean;
@@ -42,7 +21,7 @@ export const Sidebar = ({ mobile = false, onNavigate }: SidebarProps) => {
     <>
       <div className={cn("px-3", mobile ? "pb-3" : "pb-2")} />
       <nav className="flex-1 overflow-y-auto px-2 py-2 space-y-4">
-        {sections.map((section, idx) => (
+        {NAV_SECTIONS.map((section, idx) => (
           <div key={idx} className="space-y-0.5">
             {section.heading && !compact && (
               <motion.div
@@ -64,7 +43,7 @@ export const Sidebar = ({ mobile = false, onNavigate }: SidebarProps) => {
                   cn(
                     "group flex items-center gap-2.5 px-2 py-1.5 rounded-md text-sm font-normal transition-all duration-200",
                     isActive
-                      ? "bg-background shadow-sm rounded-lg border border-gray-200 text-sidebar-accent-foreground font-medium"
+                      ? "bg-background shadow-sm rounded-lg border border-border text-sidebar-accent-foreground font-medium"
                       : "text-sidebar-foreground hover:bg-sidebar-accent"
                   )
                 }
@@ -90,23 +69,26 @@ export const Sidebar = ({ mobile = false, onNavigate }: SidebarProps) => {
       </nav>
 
       <div className="px-2 py-2 border-t border-sidebar-border space-y-2">
-        <div className={cn("rounded-md border border-gray-200 bg-background/80", compact ? "p-1.5" : "p-2.5")}>
+        <div className={cn("rounded-md border border-border bg-background/80", compact ? "p-1.5" : "p-2.5")}>
           {compact ? (
             <div className="flex justify-center">
-              <UserCircle2 className="h-4 w-4 text-muted-foreground" />
+              <AvatarInitial label={user?.email} seed={user?.id} className="h-7 w-7" />
             </div>
           ) : (
             <div className="space-y-2">
-              <div className="min-w-0">
-                <p className="truncate text-xs font-medium text-foreground">{user?.email ?? "No account"}</p>
-                <p className="text-[11px] text-muted-foreground">Role: {role ?? "—"}</p>
+              <div className="flex items-center gap-2 min-w-0">
+                <AvatarInitial label={user?.email} seed={user?.id} className="shrink-0" />
+                <div className="min-w-0">
+                  <p className="truncate text-xs font-medium text-foreground">{user?.email ?? "No account"}</p>
+                  <p className="text-[11px] text-muted-foreground">Role: {role ?? "—"}</p>
+                </div>
               </div>
               <button
                 onClick={() => {
                   void signOut();
                   onNavigate?.();
                 }}
-                className="w-full h-7 flex items-center justify-center gap-1.5 rounded-md border border-gray-200 text-xs text-muted-foreground hover:text-foreground hover:bg-sidebar-accent transition-colors"
+                className="w-full h-7 flex items-center justify-center gap-1.5 rounded-md border border-border text-xs text-muted-foreground hover:text-foreground hover:bg-sidebar-accent transition-colors"
               >
                 <LogOut className="h-3.5 w-3.5" />
                 Sign out
