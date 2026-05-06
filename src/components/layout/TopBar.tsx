@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Menu, LogOut } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
+import { useTheme } from "next-themes";
 import {
   Sheet,
   SheetContent,
@@ -15,6 +16,8 @@ import { AvatarInitial } from "@/components/AvatarInitial";
 /* ── Mobile drawer nav content ───────────────────────────────────── */
 const MobileNav = ({ onNavigate }: { onNavigate: () => void }) => {
   const { user, role, signOut } = useAuth();
+  const { resolvedTheme, setTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
 
   return (
     <div className="flex flex-col h-full">
@@ -52,6 +55,12 @@ const MobileNav = ({ onNavigate }: { onNavigate: () => void }) => {
       {/* User card */}
       <div className="pt-4 pb-2 border-t border-border mt-2">
         <div className="rounded-lg border border-border bg-background/80 p-3 space-y-3">
+          <button
+            onClick={() => setTheme(isDark ? "light" : "dark")}
+            className="w-full h-9 flex items-center justify-center gap-2 rounded-md border border-border text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          >
+            {isDark ? "Light mode" : "Dark mode"}
+          </button>
           <div className="flex items-center gap-2.5 min-w-0">
             <AvatarInitial label={user?.email} seed={user?.id} className="shrink-0" />
             <div className="min-w-0">

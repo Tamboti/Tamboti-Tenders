@@ -398,15 +398,46 @@ const Tenders = () => {
   });
 
   const facetsQuery = useQuery({
-    queryKey: ["tenders-facets"],
+    queryKey: ["tenders-facets", debouncedSearch, country, category, status],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const s = debouncedSearch.trim().replace(/,/g, " ");
+
+      let countriesQuery = supabase
         .from("tenders")
-        .select("country, category")
-        .limit(1000);
-      if (error) throw new Error(handleDbError(error));
-      const countries = [...new Set(data.map((d) => d.country).filter(Boolean) as string[])].sort();
-      const categories = [...new Set(data.map((d) => d.category).filter(Boolean) as string[])].sort();
+        .select("country")
+        .eq("enrichment_status", "enriched");
+      if (s) {
+        countriesQuery = countriesQuery.or(
+          `title.ilike.%${s}%,procuring_entity.ilike.%${s}%,reference_number.ilike.%${s}%`
+        );
+      }
+      if (category !== "all") countriesQuery = countriesQuery.eq("category", category);
+      if (status !== "all") countriesQuery = countriesQuery.eq("workflow_status", status);
+
+      let categoriesQuery = supabase
+        .from("tenders")
+        .select("category")
+        .eq("enrichment_status", "enriched");
+      if (s) {
+        categoriesQuery = categoriesQuery.or(
+          `title.ilike.%${s}%,procuring_entity.ilike.%${s}%,reference_number.ilike.%${s}%`
+        );
+      }
+      if (country !== "all") categoriesQuery = categoriesQuery.eq("country", country);
+      if (status !== "all") categoriesQuery = categoriesQuery.eq("workflow_status", status);
+
+      const [{ data: countriesData, error: countriesError }, { data: categoriesData, error: categoriesError }] =
+        await Promise.all([countriesQuery, categoriesQuery]);
+
+      if (countriesError) throw new Error(handleDbError(countriesError));
+      if (categoriesError) throw new Error(handleDbError(categoriesError));
+
+      const countries = [
+        ...new Set((countriesData ?? []).map((d) => d.country).filter(Boolean) as string[]),
+      ].sort();
+      const categories = [
+        ...new Set((categoriesData ?? []).map((d) => d.category).filter(Boolean) as string[]),
+      ].sort();
       return { countries, categories };
     },
     staleTime: 15 * 60_000,

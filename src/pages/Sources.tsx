@@ -119,7 +119,24 @@ export default function Sources() {
           className="self-start sm:self-auto shrink-0"
         >
           {running["enrich-tenders"] ? (
-            <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+           <div role="status" aria-label="Loading...">
+           <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24">
+             {[...Array(8)].map((_, i) => (
+               <line
+                 key={i}
+                 x1="12"
+                 y1="3"
+                 x2="12"
+                 y2="6"
+                 stroke="currentColor"
+                 strokeWidth="2"
+                 strokeLinecap="round"
+                 className="opacity-30"
+                 transform={`rotate(${i * 45} 12 12)`}
+               />
+             ))}
+           </svg>
+         </div>
           ) : (
             <Play className="h-3.5 w-3.5 mr-1.5" />
           )}
@@ -146,7 +163,24 @@ export default function Sources() {
                 </div>
                 <Button size="sm" onClick={() => runScraper(s)} disabled={isRunning} className="shrink-0">
                   {isRunning ? (
-                    <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                    <div role="status" aria-label="Loading...">
+                    <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24">
+                      {[...Array(8)].map((_, i) => (
+                        <line
+                          key={i}
+                          x1="12"
+                          y1="3"
+                          x2="12"
+                          y2="6"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          className="opacity-30"
+                          transform={`rotate(${i * 45} 12 12)`}
+                        />
+                      ))}
+                    </svg>
+                  </div>
                   ) : (
                     <Play className="h-3.5 w-3.5 mr-1.5" />
                   )}
@@ -202,10 +236,29 @@ export default function Sources() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
-                    Loading...
-                  </td>
-                </tr>
+                <td colSpan={7} className="px-4 py-8 text-center">
+                  <div className="flex items-center justify-center ">
+                    <div role="status" aria-label="Loading...">
+                      <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24">
+                        {[...Array(8)].map((_, i) => (
+                          <line
+                            key={i}
+                            x1="12"
+                            y1="3"
+                            x2="12"
+                            y2="6"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            className="opacity-30"
+                            transform={`rotate(${i * 45} 12 12)`}
+                          />
+                        ))}
+                      </svg>
+                    </div>
+                  </div>
+                </td>
+              </tr>
               ) : logs.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">

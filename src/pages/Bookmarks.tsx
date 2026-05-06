@@ -381,12 +381,16 @@ const Bookmarks = () => {
                       <StatusBadge status={t.workflow_status} />
                     </TableCell>
                     <TableCell className="text-right space-x-2" onClick={(e) => e.stopPropagation()}>
-                      <Button variant="outline" size="sm" onClick={() => navigate(`/tender/${t.id}`)}>
-                        <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
+                      <button
+                        onClick={() => navigate(`/tender/${t.id}`)}
+                        className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+                      >
+                       
+                        <ExternalLink className="h-4 w-4" />
                         Open
-                      </Button>
+                      </button>
                       <Button variant="ghost" size="sm" onClick={(e) => removeBookmark(t.id, e)}>
-                        <BookmarkX className="h-3.5 w-3.5 mr-1.5" />
+                        <BookmarkX className="h-3.5 w-3.5 " />
                         Remove
                       </Button>
                     </TableCell>

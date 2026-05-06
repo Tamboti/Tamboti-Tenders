@@ -1,243 +1,385 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Trash2, Plus, Bell, SlidersHorizontal } from "lucide-react";
-import { handleDbError } from "@/lib/dbError";
+import { Bell, Loader2, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { formatDate } from "@/lib/format";
+import { handleDbError } from "@/lib/dbError";
+import { cn } from "@/lib/utils";
+import { PageContainer } from "@/components/layout/PageContainer";
 
-type Rule = {
+type AlertPreference = {
   id: string;
   user_id: string;
-  country: string | null;
-  category: string | null;
-  keyword: string | null;
-  min_value_usd: number | null;
-  active: boolean | null;
-  created_at: string | null;
+  name: string;
+  enabled: boolean;
+  emails: string[];
+  countries: string[];
+  categories: string[];
+  closing_soon_only: boolean;
+  frequency: "daily" | "weekly";
+  last_sent_at: string | null;
 };
+
+const parseEmails = (value: string) =>
+  value
+    .split(",")
+    .map((v) => v.trim().toLowerCase())
+    .filter(Boolean);
+
+const isEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 
 const Alerts = () => {
   const { user } = useAuth();
-  const [rules, setRules] = useState<Rule[]>([]);
   const [loading, setLoading] = useState(true);
+  const [savingId, setSavingId] = useState<string | null>(null);
+  const [sendingTestId, setSendingTestId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [alerts, setAlerts] = useState<AlertPreference[]>([]);
+  const [emailInputs, setEmailInputs] = useState<Record<string, string>>({});
 
-  const [country, setCountry] = useState("");
-  const [category, setCategory] = useState("");
-  const [keyword, setKeyword] = useState("");
-  const [minValue, setMinValue] = useState("");
-  const [adding, setAdding] = useState(false);
+  const [countries, setCountries] = useState<string[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
 
   const load = async () => {
     if (!user) return;
     setLoading(true);
-    const { data, error } = await supabase
-      .from("alert_rules")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false });
-    if (error) toast.error(handleDbError(error));
-    setRules((data as Rule[]) ?? []);
+
+    const [{ data: prefs, error: prefErr }, { data: facets, error: facetsErr }] = await Promise.all([
+      supabase.from("alert_preferences").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
+      supabase.from("tenders").select("country,category").eq("enrichment_status", "enriched").limit(1000),
+    ]);
+
+    if (prefErr) toast.error(handleDbError(prefErr));
+    if (facetsErr) toast.error(handleDbError(facetsErr));
+
+    const list = ((prefs ?? []) as AlertPreference[]).map((p) => ({
+      ...p,
+      frequency: p.frequency ?? "daily",
+      emails: p.emails ?? [],
+      countries: p.countries ?? [],
+      categories: p.categories ?? [],
+      name: p.name ?? "New alert",
+    }));
+    setAlerts(list);
+    const inputs: Record<string, string> = {};
+    list.forEach((p) => {
+      inputs[p.id] = (p.emails ?? []).join(", ");
+    });
+    setEmailInputs(inputs);
+
+    const rows = facets ?? [];
+    const allCountries = [...new Set(rows.map((r) => r.country).filter(Boolean) as string[])].sort();
+    const allCategories = [...new Set(rows.map((r) => r.category).filter(Boolean) as string[])].sort();
+    setCountries(allCountries);
+    setCategories(allCategories);
+
     setLoading(false);
   };
 
   useEffect(() => {
-    load();
-  }, [user]);
+    void load();
+  }, [user?.id]);
 
-  const add = async () => {
+  const toggleIn = (arr: string[], value: string) =>
+    arr.includes(value) ? arr.filter((x) => x !== value) : [...arr, value];
+
+  const updateAlert = (id: string, patch: Partial<AlertPreference>) => {
+    setAlerts((prev) => prev.map((a) => (a.id === id ? { ...a, ...patch } : a)));
+  };
+
+  const createAlert = async () => {
     if (!user) return;
-    if (!country && !category && !keyword && !minValue) {
-      toast.error("Set at least one criterion");
+    const payload = {
+      user_id: user.id,
+      name: `Alert ${alerts.length + 1}`,
+      enabled: true,
+      emails: user.email ? [user.email] : [],
+      countries: [] as string[],
+      categories: [] as string[],
+      closing_soon_only: false,
+      frequency: "daily" as const,
+    };
+    const { data, error } = await supabase
+      .from("alert_preferences")
+      .insert(payload)
+      .select("*")
+      .single();
+    if (error) {
+      toast.error(handleDbError(error));
       return;
     }
-    setAdding(true);
-    const { error } = await supabase.from("alert_rules").insert({
-      user_id: user.id,
-      country: country || null,
-      category: category || null,
-      keyword: keyword || null,
-      min_value_usd: minValue ? Number(minValue) : null,
-      active: true,
-    });
-    setAdding(false);
-    if (error) return toast.error(handleDbError(error));
-    setCountry("");
-    setCategory("");
-    setKeyword("");
-    setMinValue("");
-    load();
+    const created = data as AlertPreference;
+    setAlerts((prev) => [created, ...prev]);
+    setEmailInputs((prev) => ({ ...prev, [created.id]: (created.emails ?? []).join(", ") }));
+    toast.success("New alert profile created");
   };
 
-  const remove = async (id: string) => {
-    const { error } = await supabase.from("alert_rules").delete().eq("id", id);
-    if (error) return toast.error(handleDbError(error));
-    setRules((r) => r.filter((x) => x.id !== id));
-  };
+  const save = async (alert: AlertPreference) => {
+    if (!user) return;
+    const emails = parseEmails(emailInputs[alert.id] ?? "");
+    const invalidEmails = emails.filter((e) => !isEmail(e));
+    if (emails.length === 0) return toast.error("Add at least one recipient email");
+    if (invalidEmails.length > 0) return toast.error(`Invalid emails: ${invalidEmails.join(", ")}`);
 
-  const toggleActive = async (rule: Rule) => {
+    setSavingId(alert.id);
+    const payload = {
+      name: alert.name.trim() || "New alert",
+      enabled: alert.enabled,
+      emails,
+      countries: alert.countries ?? [],
+      categories: alert.categories ?? [],
+      closing_soon_only: alert.closing_soon_only,
+      frequency: alert.frequency,
+    };
     const { error } = await supabase
-      .from("alert_rules")
-      .update({ active: !rule.active })
-      .eq("id", rule.id);
+      .from("alert_preferences")
+      .update(payload)
+      .eq("id", alert.id)
+      .eq("user_id", user.id);
+    setSavingId(null);
+    if (error) {
+      toast.error(handleDbError(error));
+      return;
+    }
+    updateAlert(alert.id, payload);
+    setEmailInputs((prev) => ({ ...prev, [alert.id]: emails.join(", ") }));
+    toast.success(`Saved "${payload.name}"`);
+  };
+
+  const sendTest = async (alert: AlertPreference) => {
+    if (!user) return;
+    setSendingTestId(alert.id);
+    const { data, error } = await supabase.functions.invoke("send-alert-digest", {
+      body: { mode: "test", alertId: alert.id },
+    });
+    setSendingTestId(null);
+    if (error) {
+      toast.error(error.message ?? "Failed to send test email");
+      return;
+    }
+    if (data?.sent) {
+      toast.success(`Test email sent (${data.matched ?? 0} matches)`);
+    } else {
+      toast.info(data?.reason ?? "No matching tenders for current preferences");
+    }
+  };
+
+  const removeAlert = async (alert: AlertPreference) => {
+    if (!user) return;
+    setDeletingId(alert.id);
+    const { error } = await supabase
+      .from("alert_preferences")
+      .delete()
+      .eq("id", alert.id)
+      .eq("user_id", user.id);
+    setDeletingId(null);
     if (error) return toast.error(handleDbError(error));
-    setRules((rs) =>
-      rs.map((r) => (r.id === rule.id ? { ...r, active: !rule.active } : r))
-    );
+    setAlerts((prev) => prev.filter((a) => a.id !== alert.id));
+    setEmailInputs((prev) => {
+      const next = { ...prev };
+      delete next[alert.id];
+      return next;
+    });
+    toast.success(`Deleted "${alert.name}"`);
   };
 
   return (
-    <div className="px-6 py-10 lg:px-10  mx-auto space-y-10">
-
-      {/* Header */}
-      <div className="space-y-1">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-          Notifications
-        </p>
+    <PageContainer className="space-y-6">
+      <div className="flex items-start justify-between gap-3">
+        <div>
         <h1 className="page-title">Email alerts</h1>
-        <p className="text-sm text-muted-foreground leading-relaxed">
-          Get notified when new tenders match your criteria.
+        <p className="mt-1 text-sm text-muted-foreground">
+            Create multiple alert profiles. Each one can target different recipients and filters.
         </p>
       </div>
-
-      {/* New rule card */}
-      <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-        {/* Card header */}
-        <div className="flex items-center gap-3 border-b border-border px-6 py-4">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-muted">
-            <SlidersHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-foreground">New alert rule</p>
-            <p className="text-xs text-muted-foreground">Leave any field blank to match anything</p>
-          </div>
-        </div>
-
-        {/* Fields */}
-        <div className="px-6 py-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[
-            { label: "Country", value: country, set: setCountry, placeholder: "e.g. ZM" },
-            { label: "Category", value: category, set: setCategory, placeholder: "e.g. IT services" },
-            { label: "Keyword", value: keyword, set: setKeyword, placeholder: "cloud, security…" },
-            { label: "Min value (USD)", value: minValue, set: setMinValue, placeholder: "100,000", type: "number" },
-          ].map(({ label, value, set, placeholder, type }) => (
-            <div key={label} className="space-y-1.5">
-              <label className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                {label}
-              </label>
-              <Input
-                type={type}
-                value={value}
-                onChange={(e) => set(e.target.value)}
-                placeholder={placeholder}
-                className="h-9 rounded-lg text-sm transition-colors focus-visible:ring-0"
-              />
-            </div>
-          ))}
-        </div>
-
-        {/* Footer */}
-        <div className="flex justify-end border-t border-border px-6 py-4">
-          <Button
-            onClick={add}
-            disabled={adding}
-            className="h-9 rounded-lg px-4 text-sm font-medium shadow-none transition-all active:scale-[0.98]"
-          >
-            <Plus className="h-3.5 w-3.5 mr-1.5" />
-            {adding ? "Adding…" : "Add rule"}
-          </Button>
-        </div>
+        <Button onClick={createAlert} className="shrink-0">
+          <Plus className="mr-1.5 h-3.5 w-3.5" />
+          New alert
+        </Button>
       </div>
 
-      {/* Rules list */}
-      <div className="space-y-3">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-          Your rules
-        </p>
-
-        {loading ? (
-          <div className="space-y-2.5">
-            {[1, 2].map((i) => (
-              <div
-                key={i}
-                className="h-[72px] animate-pulse rounded-2xl border border-border bg-muted/40"
-              />
-            ))}
+      {loading ? (
+        <div className="rounded-2xl border border-border bg-card p-6 text-sm text-muted-foreground shadow-sm">
+          Loading alerts...
+        </div>
+      ) : alerts.length === 0 ? (
+        <div className="rounded-2xl border border-border bg-card p-8 text-center shadow-sm">
+          <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-muted">
+            <Bell className="h-4 w-4 text-muted-foreground" />
           </div>
-        ) : rules.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 rounded-2xl border border-border bg-card py-14 shadow-sm">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted">
-              <Bell className="h-4 w-4 text-muted-foreground" />
-            </div>
-            <div className="text-center">
-              <p className="text-sm font-medium text-foreground">No alerts yet</p>
-              <p className="mt-0.5 text-xs text-muted-foreground">Create your first rule above to get started.</p>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-2.5">
-            {rules.map((r) => (
-              <div
-                key={r.id}
-                className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-border bg-card px-5 py-4 shadow-sm transition-shadow hover:shadow-md"
-              >
-                {/* Fields */}
-                <div className="flex flex-wrap gap-x-7 gap-y-2 flex-1 min-w-0">
-                  <RuleField label="Country" value={r.country} />
-                  <RuleField label="Category" value={r.category} />
-                  <RuleField label="Keyword" value={r.keyword} />
-                  <RuleField
-                    label="Min value"
-                    value={r.min_value_usd ? `$${r.min_value_usd.toLocaleString()}` : null}
-                  />
-                  <RuleField label="Created" value={formatDate(r.created_at)} />
-                </div>
-
-                {/* Actions */}
-                <div className="flex items-center gap-3 shrink-0">
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      checked={!!r.active}
-                      onCheckedChange={() => toggleActive(r)}
-                      className="data-[state=checked]:bg-primary"
-                    />
-                    <span className="w-10 text-xs text-muted-foreground">
-                      {r.active ? "Active" : "Paused"}
-                    </span>
+          <p className="text-sm font-medium text-foreground">No alert profiles yet</p>
+          <p className="mt-1 text-xs text-muted-foreground">Create your first alert profile to start receiving digest emails.</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {alerts.map((alert) => {
+            const emails = parseEmails(emailInputs[alert.id] ?? "");
+            const invalidEmails = emails.filter((e) => !isEmail(e));
+            const busy = savingId === alert.id || sendingTestId === alert.id || deletingId === alert.id;
+            return (
+              <div key={alert.id} className="rounded-2xl border border-border bg-card shadow-sm">
+                <div className="p-6 space-y-6">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-2.5 min-w-0 flex-1">
+                      <div className="mt-0.5 rounded-lg bg-muted p-2">
+                        <Bell className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                      <div className="space-y-1 min-w-0 flex-1">
+                        <Input
+                          value={alert.name}
+                          onChange={(e) => updateAlert(alert.id, { name: e.target.value })}
+                          placeholder="Alert name"
+                          className="h-9 max-w-[18rem]"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Matches tenders by selected countries/categories and optional closing-soon window.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">{alert.enabled ? "Enabled" : "Disabled"}</span>
+                      <Switch
+                        checked={alert.enabled}
+                        onCheckedChange={(v) => updateAlert(alert.id, { enabled: v })}
+                      />
+                    </div>
                   </div>
-                  <button
-                    onClick={() => remove(r.id)}
-                    className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-foreground">Recipients (comma-separated)</label>
+                    <Input
+                      placeholder="you@company.com, team@company.com"
+                      value={emailInputs[alert.id] ?? ""}
+                      onChange={(e) => setEmailInputs((prev) => ({ ...prev, [alert.id]: e.target.value }))}
+                    />
+                    {invalidEmails.length > 0 && (
+                      <p className="text-xs text-destructive">Invalid: {invalidEmails.join(", ")}</p>
+                    )}
+                  </div>
+
+                  <div className="grid gap-6 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium text-foreground">Frequency</p>
+                      <div className="flex gap-2">
+                        {(["daily", "weekly"] as const).map((f) => (
+                          <button
+                            key={f}
+                            type="button"
+                            onClick={() => updateAlert(alert.id, { frequency: f })}
+                            className={cn(
+                              "rounded-lg border px-3 py-1.5 text-xs transition-colors",
+                              alert.frequency === f
+                                ? "border-primary bg-primary/10 text-primary"
+                                : "border-border text-muted-foreground hover:text-foreground"
+                            )}
+                          >
+                            {f === "daily" ? "Daily" : "Weekly"}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium text-foreground">Options</p>
+                      <label className="inline-flex items-center gap-2 text-sm text-muted-foreground">
+                        <Switch
+                          checked={alert.closing_soon_only}
+                          onCheckedChange={(v) => updateAlert(alert.id, { closing_soon_only: v })}
+                        />
+                        Only tenders closing in the next 7 days
+                      </label>
+                    </div>
+                  </div>
+
+                  <FacetPicker
+                    label="Countries"
+                    values={countries}
+                    selected={alert.countries ?? []}
+                    onToggle={(v) => updateAlert(alert.id, { countries: toggleIn(alert.countries ?? [], v) })}
+                  />
+
+                  <FacetPicker
+                    label="Categories"
+                    values={categories}
+                    selected={alert.categories ?? []}
+                    onToggle={(v) => updateAlert(alert.id, { categories: toggleIn(alert.categories ?? [], v) })}
+                  />
+
+                  <div className="flex flex-wrap justify-between gap-2 border-t border-border pt-4">
+                    <Button
+                      variant="ghost"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => removeAlert(alert)}
+                      disabled={busy}
+                    >
+                      {deletingId === alert.id ? (
+                        <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+                      )}
+                      Delete
+                    </Button>
+                    <div className="flex gap-2">
+                      <Button variant="outline" onClick={() => sendTest(alert)} disabled={busy}>
+                        {sendingTestId === alert.id && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+                        Send test
+                      </Button>
+                      <Button onClick={() => save(alert)} disabled={busy}>
+                        {savingId === alert.id && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+                        Save
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
+            );
+          })}
+        </div>
+      )}
+    </PageContainer>
   );
 };
 
-const RuleField = ({
+const FacetPicker = ({
   label,
-  value,
+  values,
+  selected,
+  onToggle,
 }: {
   label: string;
-  value: string | null | undefined;
+  values: string[];
+  selected: string[];
+  onToggle: (value: string) => void;
 }) => (
-  <div className="min-w-0">
-    <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
-      {label}
-    </p>
-    <p className={`truncate text-sm font-medium ${value ? "text-foreground" : "text-muted-foreground/70"}`}>
-      {value ?? "Any"}
-    </p>
+  <div className="space-y-2">
+    <p className="text-xs font-medium text-foreground">{label}</p>
+    {values.length === 0 ? (
+      <p className="text-xs text-muted-foreground">No options available yet.</p>
+    ) : (
+      <div className="flex flex-wrap gap-2">
+        {values.map((value) => {
+          const isOn = selected.includes(value);
+          return (
+            <button
+              key={value}
+              type="button"
+              onClick={() => onToggle(value)}
+              className={cn(
+                "rounded-full border px-3 py-1 text-xs transition-colors",
+                isOn
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {value}
+            </button>
+          );
+        })}
+      </div>
+    )}
   </div>
 );
 

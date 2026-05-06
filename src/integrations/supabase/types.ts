@@ -47,6 +47,51 @@ export type Database = {
         }
         Relationships: []
       }
+      alert_preferences: {
+        Row: {
+          categories: string[]
+          closing_soon_only: boolean
+          created_at: string
+          emails: string[]
+          enabled: boolean
+          frequency: string
+          id: string
+          last_sent_at: string | null
+          name: string
+          countries: string[]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          categories?: string[]
+          closing_soon_only?: boolean
+          created_at?: string
+          emails?: string[]
+          enabled?: boolean
+          frequency?: string
+          id?: string
+          last_sent_at?: string | null
+          name?: string
+          countries?: string[]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          categories?: string[]
+          closing_soon_only?: boolean
+          created_at?: string
+          emails?: string[]
+          enabled?: boolean
+          frequency?: string
+          id?: string
+          last_sent_at?: string | null
+          name?: string
+          countries?: string[]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       scrape_logs: {
         Row: {
           duration_ms: number | null
