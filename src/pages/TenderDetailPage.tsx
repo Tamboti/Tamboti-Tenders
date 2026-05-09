@@ -88,16 +88,100 @@ const TenderDetailSkeleton = () => (
 /* ─── Not found ──────────────────────────────────────────────────── */
 
 const NotFound = () => (
-  <div className="flex flex-col items-center justify-center py-20 gap-3 text-center">
-    <span className="text-4xl select-none">🔍</span>
-    <p className="text-base font-medium text-foreground">Tender not found</p>
-    <p className="text-sm text-muted-foreground">
-      This tender may have been removed or the link is incorrect.
-    </p>
+  <div className="flex flex-col items-center justify-center py-24 gap-6 text-center">
+    {/* SVG illustration */}
+    <div className="relative">
+      <svg
+        width="120"
+        height="120"
+        viewBox="0 0 120 120"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        className="text-foreground"
+      >
+        {/* Outer ring */}
+        <circle
+          cx="52"
+          cy="52"
+          r="36"
+          className="stroke-border"
+          strokeWidth="2.5"
+          strokeDasharray="6 4"
+        />
+        {/* Lens body */}
+        <circle
+          cx="52"
+          cy="52"
+          r="28"
+          className="fill-muted stroke-muted-foreground/30"
+          strokeWidth="1.5"
+        />
+        {/* Inner glare */}
+        <circle cx="44" cy="44" r="5" className="fill-muted-foreground/10" />
+
+        {/* X mark inside lens */}
+        <line
+          x1="44"
+          y1="44"
+          x2="60"
+          y2="60"
+          className="stroke-muted-foreground"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+        />
+        <line
+          x1="60"
+          y1="44"
+          x2="44"
+          y2="60"
+          className="stroke-muted-foreground"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+        />
+
+        {/* Handle */}
+        <line
+          x1="71"
+          y1="71"
+          x2="90"
+          y2="90"
+          className="stroke-foreground/40"
+          strokeWidth="5"
+          strokeLinecap="round"
+        />
+        <line
+          x1="71"
+          y1="71"
+          x2="90"
+          y2="90"
+          className="stroke-foreground/10"
+          strokeWidth="8"
+          strokeLinecap="round"
+        />
+      </svg>
+
+      {/* Subtle glow behind */}
+      <div className="absolute inset-0 -z-10 rounded-full bg-muted-foreground/5 blur-2xl scale-110" />
+    </div>
+
+    {/* Text */}
+    <div className="flex flex-col gap-1.5 max-w-xs">
+      <p className="text-base font-semibold tracking-tight text-foreground">
+        Tender not found
+      </p>
+      <p className="text-sm text-muted-foreground leading-relaxed">
+        This tender may have been removed or the link is incorrect.
+      </p>
+    </div>
+
+    {/* CTA */}
     <Link
       to="/"
-      className="mt-2 text-sm font-medium text-foreground underline-offset-4 hover:underline"
+      className="inline-flex items-center gap-1.5 mt-1 text-sm font-medium text-foreground border border-border rounded-full px-4 py-2 hover:bg-muted transition-colors duration-150"
     >
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M11 7H3M3 7L6.5 3.5M3 7L6.5 10.5" className="stroke-current" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
       Back to all tenders
     </Link>
   </div>

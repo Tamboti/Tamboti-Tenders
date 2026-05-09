@@ -9,6 +9,7 @@ import { Trash2 } from "lucide-react";
 import { handleDbError } from "@/lib/dbError";
 import { toast } from "sonner";
 import { AvatarInitial } from "@/components/AvatarInitial";
+import { cn } from "@/lib/utils";
 
 /* ---------------- Types ---------------- */
 
@@ -53,33 +54,46 @@ const NoteComposer = ({
           size="sm"
           onClick={onAdd}
           disabled={submitting || !text.trim()}
-          className="rounded-full px-3"
+          className={cn(
+            "relative h-8 px-4 rounded-md text-sm font-medium transition-all duration-150",
+            "bg-foreground text-background",
+            "hover:opacity-90 active:scale-[0.97]",
+            "disabled:opacity-40 disabled:cursor-not-allowed disabled:scale-100",
+            "shadow-sm"
+          )}
         >
-          {submitting && <div role="status" aria-label="Loading...">
-            <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24">
-              {[...Array(8)].map((_, i) => (
-                <line
-                  key={i}
-                  x1="12"
-                  y1="3"
-                  x2="12"
-                  y2="6"
+          <span className={cn("transition-opacity duration-150", submitting ? "opacity-0" : "opacity-100")}>
+            Add
+          </span>
+
+          {submitting && (
+            <span className="absolute inset-0 flex items-center justify-center">
+              <svg
+                className="h-3.5 w-3.5 animate-spin"
+                viewBox="0 0 16 16"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <circle
+                  cx="8" cy="8" r="6"
                   stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  className="opacity-30"
-                  transform={`rotate(${i * 45} 12 12)`}
+                  strokeWidth="1.75"
+                  strokeOpacity="0.25"
                 />
-              ))}
-            </svg>
-          </div>}
-          <span className="text-sm font-medium">Add</span>
+                <path
+                  d="M14 8a6 6 0 0 0-6-6"
+                  stroke="currentColor"
+                  strokeWidth="1.75"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </span>
+          )}
         </Button>
       </div>
     </div>
   );
 };
-
 /* ---------------- Note Card ---------------- */
 
 const NoteCard = ({
@@ -240,29 +254,29 @@ export const TenderNotes = ({ tenderId }: { tenderId: string }) => {
 
       {/* Notes */}
       <div className="flex flex-col gap-2">
-  {loading ? (
-    <>
-      <Skeleton />
-      <Skeleton />
-    </>
-  ) : notes.length === 0 ? (
-    <div className="text-sm text-muted-foreground">
-      No notes yet
-    </div>
-  ) : (
-    <div className="flex flex-wrap mt-4 gap-3">
-      {notes.map((note) => (
-        <NoteCard
-          key={note.id}
-          note={note}
-          user={user}
-          profile={profiles[note.user_id]}
-          onDelete={remove}
-        />
-      ))}
-    </div>
-  )}
-</div>
+        {loading ? (
+          <>
+            <Skeleton />
+            <Skeleton />
+          </>
+        ) : notes.length === 0 ? (
+          <div className="text-sm text-muted-foreground">
+            No notes yet
+          </div>
+        ) : (
+          <div className="flex flex-wrap mt-4 gap-3">
+            {notes.map((note) => (
+              <NoteCard
+                key={note.id}
+                note={note}
+                user={user}
+                profile={profiles[note.user_id]}
+                onDelete={remove}
+              />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 };

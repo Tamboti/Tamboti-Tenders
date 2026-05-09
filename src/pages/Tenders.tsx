@@ -69,7 +69,7 @@ import {
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { PageContainer } from "@/components/layout/PageContainer";
 
-const PAGE_SIZE = 50;
+const PAGE_SIZE = 20;
 
 const MotionTableRow = motion(TableRow);
 
