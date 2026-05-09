@@ -7,11 +7,26 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { NAV_SECTIONS } from "./nav.ts";
 import { AvatarInitial } from "@/components/AvatarInitial";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 type SidebarProps = {
   mobile?: boolean;
   onNavigate?: () => void;
 };
+
+const SunIcon = ({ className }: { className?: string }) => (
+  <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="4" />
+    <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+  </svg>
+);
+
+const MoonIcon = ({ className }: { className?: string }) => (
+  <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+  </svg>
+);
 
 export const Sidebar = ({ mobile = false, onNavigate }: SidebarProps) => {
   const [collapsed, setCollapsed] = useState(false);
@@ -20,6 +35,41 @@ export const Sidebar = ({ mobile = false, onNavigate }: SidebarProps) => {
 
   const isDark = resolvedTheme === "dark";
   const compact = mobile ? false : collapsed;
+
+  const ThemeToggle = ({ isCompact }: { isCompact?: boolean }) =>
+    isCompact ? (
+      <button
+        onClick={() => setTheme(isDark ? "light" : "dark")}
+        className="h-8 w-8 flex items-center justify-center rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-sidebar-accent transition-colors"
+        title={isDark ? "Switch to light" : "Switch to dark"}
+      >
+        {isDark
+          ? <SunIcon className="h-4 w-4" />
+          : <MoonIcon className="h-4 w-4" />
+        }
+      </button>
+    ) : (
+      <div className="flex items-center justify-between px-0.5">
+        <div className="flex items-center gap-1.5">
+          {isDark
+            ? <MoonIcon className="h-3.5 w-3.5 text-muted-foreground" />
+            : <SunIcon className="h-3.5 w-3.5 text-muted-foreground" />
+          }
+          <Label
+            htmlFor="theme-switch"
+            className="text-xs text-muted-foreground cursor-pointer select-none"
+          >
+            {isDark ? "Dark mode" : "Light mode"}
+          </Label>
+        </div>
+        <Switch
+          id="theme-switch"
+          checked={isDark}
+          onCheckedChange={(checked) => setTheme(checked ? "dark" : "light")}
+          className="scale-90"
+        />
+      </div>
+    );
 
   const content = (
     <>
@@ -38,11 +88,11 @@ export const Sidebar = ({ mobile = false, onNavigate }: SidebarProps) => {
           <img
             src="https://luykyredvhhcamcmgahp.supabase.co/storage/v1/object/public/Company%20assets/Gemini_Generated_Image_k92dq5k92dq5k92d-removebg-preview.png"
             alt="Tender Compass"
-            className="h-7 w-7 object-contain shrink-0"
+            className="h-9 w-9 object-contain shrink-0"
           />
 
           {!compact && (
-            <h1 className="text-sm font-semibold tracking-tight truncate text-foreground">
+            <h1 className="text-base font-semibold tracking-tight truncate text-foreground">
               Tender Aggregator
             </h1>
           )}
@@ -105,10 +155,10 @@ export const Sidebar = ({ mobile = false, onNavigate }: SidebarProps) => {
       </nav>
 
       {/* BOTTOM PANEL */}
-      <div className="px-2 py-2 border-t border-sidebar-border space-y-2">
+      <div className="px-2 py-2  space-y-2">
         <div
           className={cn(
-            "rounded-md border border-border bg-background/80",
+            "rounded-md bg-background/80 shadow-sm ",
             compact ? "p-2" : "p-3"
           )}
         >
@@ -119,17 +169,10 @@ export const Sidebar = ({ mobile = false, onNavigate }: SidebarProps) => {
                 seed={user?.id}
                 className="h-8 w-8"
               />
-
-              <button
-                onClick={() => setTheme(isDark ? "light" : "dark")}
-                className="h-8 w-8 flex items-center justify-center rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-sidebar-accent transition-colors"
-                title="Toggle theme"
-              >
-                {isDark ? "L" : "D"}
-              </button>
+              <ThemeToggle isCompact />
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-2.5">
               <div className="flex items-center gap-2 min-w-0">
                 <AvatarInitial
                   label={user?.email}
@@ -146,12 +189,7 @@ export const Sidebar = ({ mobile = false, onNavigate }: SidebarProps) => {
                 </div>
               </div>
 
-              <button
-                onClick={() => setTheme(isDark ? "light" : "dark")}
-                className="w-full h-8 flex items-center justify-center rounded-md border border-border text-xs text-muted-foreground hover:text-foreground hover:bg-sidebar-accent transition-colors"
-              >
-                {isDark ? "Light mode" : "Dark mode"}
-              </button>
+              <ThemeToggle />
 
               <button
                 onClick={() => {

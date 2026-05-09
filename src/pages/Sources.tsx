@@ -108,9 +108,10 @@ export default function Sources() {
         <div>
           <h1 className="page-title">Sources</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Run scrapers manually and review their execution history.
+            Review Scapers execution history.
           </p>
         </div>
+        {/* ── Enhance tender button 
         <Button
           variant="outline"
           size="sm"
@@ -142,9 +143,11 @@ export default function Sources() {
           )}
           Run enrichment
         </Button>
+         */}
       </div>
+     
 
-      {/* ── Scraper cards ── */}
+      {/* ── Scraper cards ── 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {SCRAPERS.map((s) => {
           const last = logs.find((l) => l.source?.toLowerCase().includes(s.source));
@@ -213,6 +216,8 @@ export default function Sources() {
         })}
       </div>
 
+      */}
+
       {/* ── Recent runs ── */}
       <Card className="overflow-hidden">
         <div className="px-4 py-3 border-b border-border">
@@ -262,7 +267,7 @@ export default function Sources() {
               ) : logs.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
-                    No runs yet. Click "Run now" above to start a scraper.
+                    No runs yet. 
                   </td>
                 </tr>
               ) : (

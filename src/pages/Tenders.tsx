@@ -491,7 +491,6 @@ const Tenders = () => {
         queryClient.setQueryData(["tender-bookmarks", uid], n);
         return n;
       });
-      // Ensure Bookmarks page refreshes even within staleTime.
       queryClient.invalidateQueries({ queryKey: ["bookmarks-page", uid] });
     } else {
       const { error } = await supabase
@@ -502,7 +501,6 @@ const Tenders = () => {
         queryClient.setQueryData(["tender-bookmarks", uid], n);
         return n;
       });
-      // Ensure Bookmarks page refreshes even within staleTime.
       queryClient.invalidateQueries({ queryKey: ["bookmarks-page", uid] });
     }
   };
@@ -533,12 +531,6 @@ const Tenders = () => {
     category !== "all" && category,
     status !== "all" && status,
   ].filter(Boolean) as string[];
-
-  const clearAllFilters = () => {
-    setCountry("all");
-    setCategory("all");
-    setStatus("all");
-  };
 
   /* ── Shared filter controls (used in both bar and sheet) ── */
   const FilterControls = ({ compact = false }: { compact?: boolean }) => (
@@ -606,93 +598,108 @@ const Tenders = () => {
           {/* Desktop filter bar (md+) */}
           <div className="hidden md:flex flex-wrap gap-2 items-center">
             <div className="relative flex-1 min-w-[260px] rounded-lg border border-border bg-background">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-            <Input
-              placeholder="Search title, entity, reference…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-8 h-9 text-sm bg-transparent"
-            />
-          </div>
-          <FilterControls />
-          {activeFilters.length > 0 && (
-            <button
-              onClick={clearAllFilters}
-              className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors"
-            >
-              Clear filters
-            </button>
-          )}
-        </div>
-
-        {/* Mobile filter bar (< md): search + filter button */}
-        <div className="flex md:hidden gap-2 items-center">
-          <div className="relative flex-1 rounded-lg border border-border bg-background">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-            <Input
-              placeholder="Search tenders…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-8 h-10 text-sm bg-transparent"
-            />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                placeholder="Search title, entity, reference…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-8 h-9 text-sm bg-transparent"
+              />
+            </div>
+            <FilterControls />
           </div>
 
-          <Sheet open={filterSheetOpen} onOpenChange={setFilterSheetOpen}>
-            <SheetTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className={cn(
-                  "h-10 gap-2 rounded-lg border border-border text-sm shrink-0",
-                  activeFilters.length > 0 && "border-primary/60 text-primary bg-primary/5"
-                )}
-              >
-                <SlidersHorizontal className="h-3.5 w-3.5" />
-                Filters
-                {activeFilters.length > 0 && (
-                  <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
-                    {activeFilters.length}
-                  </span>
-                )}
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="bottom" className="rounded-t-2xl px-5 pb-8 pt-5">
-              <SheetHeader className="mb-5">
-                <div className="flex items-center justify-between">
-                  <SheetTitle className="text-base font-semibold">Filters</SheetTitle>
-                  {activeFilters.length > 0 && (
-                    <button
-                      onClick={clearAllFilters}
-                      className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors"
-                    >
-                      Clear all
-                    </button>
+          {/* Mobile filter bar (< md): search + filter button */}
+          <div className="flex md:hidden gap-2 items-center">
+            <div className="relative flex-1 rounded-lg border border-border bg-background">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                placeholder="Search tenders…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-8 h-10 text-sm bg-transparent"
+              />
+            </div>
+
+            <Sheet open={filterSheetOpen} onOpenChange={setFilterSheetOpen}>
+              <SheetTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={cn(
+                    "h-10 gap-2 rounded-lg border border-border text-sm shrink-0",
+                    activeFilters.length > 0 && "border-primary/60 text-primary bg-primary/5"
                   )}
+                >
+                  <SlidersHorizontal className="h-3.5 w-3.5" />
+                  Filters
+                  {activeFilters.length > 0 && (
+                    <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
+                      {activeFilters.length}
+                    </span>
+                  )}
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="bottom" className="rounded-t-2xl px-5 pb-8 pt-5">
+                <SheetHeader className="mb-5">
+                  <div className="flex items-center justify-between">
+                    <SheetTitle className="text-base font-semibold">Filters</SheetTitle>
+                  </div>
+                </SheetHeader>
+                <div className="space-y-3">
+                  <FilterControls compact />
                 </div>
-              </SheetHeader>
-              <div className="space-y-3">
-                <FilterControls compact />
-              </div>
-              <Button
-                className="mt-6 w-full"
-                onClick={() => setFilterSheetOpen(false)}
-              >
-                Show results
-              </Button>
-            </SheetContent>
-          </Sheet>
-        </div>
-
-        {/* ── Active filter chips (shared) ── */}
-        {activeFilters.length > 0 && (
-          <div className="flex gap-2 flex-wrap mt-3">
-            {activeFilters.map((f) => (
-              <span key={f} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/50 px-3 py-1 text-xs font-medium text-foreground">
-                {f}
-              </span>
-            ))}
+                <Button
+                  className="mt-6 w-full"
+                  onClick={() => setFilterSheetOpen(false)}
+                >
+                  Show results
+                </Button>
+              </SheetContent>
+            </Sheet>
           </div>
-        )}
+
+          {/* ── Active filter chips (shared) ── */}
+          {(country !== "all" || category !== "all" || status !== "all") && (
+            <div className="flex gap-2 flex-wrap mt-3">
+              {country !== "all" && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/50 px-2.5 py-1 text-xs font-medium text-foreground">
+                  {country}
+                  <button
+                    onClick={() => setCountry("all")}
+                    className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20 transition-colors"
+                    aria-label="Remove country filter"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              )}
+              {category !== "all" && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/50 px-2.5 py-1 text-xs font-medium text-foreground">
+                  {category}
+                  <button
+                    onClick={() => setCategory("all")}
+                    className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20 transition-colors"
+                    aria-label="Remove category filter"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              )}
+              {status !== "all" && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/50 px-2.5 py-1 text-xs font-medium text-foreground">
+                  {status}
+                  <button
+                    onClick={() => setStatus("all")}
+                    className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20 transition-colors"
+                    aria-label="Remove status filter"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
         {/* ── Desktop table (md+) ── */}

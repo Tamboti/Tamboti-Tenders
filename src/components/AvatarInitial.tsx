@@ -1,13 +1,14 @@
 import { cn } from "@/lib/utils";
 
-const COLOR_PAIRS = [
-  { bg: "bg-indigo-500/15", fg: "text-indigo-700 dark:text-indigo-300" },
-  { bg: "bg-emerald-500/15", fg: "text-emerald-700 dark:text-emerald-300" },
-  { bg: "bg-sky-500/15", fg: "text-sky-700 dark:text-sky-300" },
-  { bg: "bg-amber-500/15", fg: "text-amber-700 dark:text-amber-300" },
-  { bg: "bg-fuchsia-500/15", fg: "text-fuchsia-700 dark:text-fuchsia-300" },
-  { bg: "bg-rose-500/15", fg: "text-rose-700 dark:text-rose-300" },
-  { bg: "bg-teal-500/15", fg: "text-teal-700 dark:text-teal-300" },
+const GLASS_GRADIENTS = [
+  { grad: "radial-gradient(circle at 30% 30%, #6ee7b7, #3b82f6)", fg: "text-white" },
+  { grad: "radial-gradient(circle at 70% 30%, #a78bfa, #60a5fa)", fg: "text-white" },
+  { grad: "radial-gradient(circle at 30% 70%, #f472b6, #fb923c)", fg: "text-white" },
+  { grad: "radial-gradient(circle at 60% 40%, #34d399, #06b6d4)", fg: "text-white" },
+  { grad: "radial-gradient(circle at 40% 60%, #818cf8, #c084fc)", fg: "text-white" },
+  { grad: "radial-gradient(circle at 70% 70%, #f87171, #fb7185)", fg: "text-white" },
+  { grad: "radial-gradient(circle at 20% 50%, #fbbf24, #34d399)", fg: "text-white" },
+  { grad: "radial-gradient(circle at 80% 20%, #60a5fa, #a78bfa)", fg: "text-white" },
 ];
 
 const hashString = (s: string) => {
@@ -27,20 +28,26 @@ export const AvatarInitial = ({
 }) => {
   const safe = (label ?? "").trim();
   const initial = (safe[0] ?? "?").toUpperCase();
-  const colors = COLOR_PAIRS[hashString(seed ?? safe ?? "?") % COLOR_PAIRS.length];
+  const { grad, fg } = GLASS_GRADIENTS[hashString(seed ?? safe ?? "?") % GLASS_GRADIENTS.length];
 
   return (
     <div
       className={cn(
-        "inline-flex h-7 w-7 items-center justify-center rounded-full border border-border text-[12px] font-semibold",
-        colors.bg,
-        colors.fg,
+        "inline-flex h-7 w-7 items-center justify-center rounded-full text-[12px] font-semibold relative overflow-hidden",
+        fg,
         className
       )}
+      style={{ background: grad }}
       aria-hidden="true"
     >
-      {initial}
+      {/* glass sheen overlay */}
+      <span
+        className="pointer-events-none absolute inset-0 rounded-full"
+        style={{
+          background: "linear-gradient(135deg, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.05) 60%)",
+        }}
+      />
+      <span className="relative z-10 drop-shadow-sm">{initial}</span>
     </div>
   );
 };
-

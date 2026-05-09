@@ -46,6 +46,7 @@ export type Tender = {
   location_district: string | null;
   lot_count: number | null;
   contract_duration_days: number | null;
+  contact_information: string | null;
   scraped_at: string | null;
   created_at: string | null;
   updated_at: string | null;

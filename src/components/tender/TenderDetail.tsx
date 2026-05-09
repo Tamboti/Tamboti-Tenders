@@ -28,6 +28,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { User } from "iconoir-react";
 
 /* ─── tiny helpers ──────────────────────────────────────────────── */
 
@@ -153,6 +154,11 @@ export const TenderDetail = ({
         .filter(Boolean)
         .join(", "),
     },
+    tender.contact_information && {
+      icon: User,
+      label: "Contact information",
+      value: tender.contact_information,
+    },
     tender.lot_count && { icon: Layers, label: "Lots", value: tender.lot_count },
     tender.contract_duration_days && {
       icon: Clock,
@@ -166,16 +172,32 @@ export const TenderDetail = ({
       {/* ── Header ───────────────────────────────────────────────── */}
       <div className="space-y-3">
         {/* top-row: badge, ref, source */}
-        <div className="flex flex-wrap items-center gap-2">
-          <StatusBadge status={status} />
-          {tender.reference_number && (
-            <code className="rounded bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">
-              {tender.reference_number}
-            </code>
+        <div className="flex justify-between items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <StatusBadge status={status} />
+            {tender.reference_number && (
+              <code className="rounded bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">
+                {tender.reference_number}
+              </code>
+            )}
+            {tender.source && (
+              <span className="text-[12px] text-muted-foreground">{tender.source}</span>
+            )}
+          </div>
+
+          {tender.source_url && tender.source !== "tanzania" && (
+           <a
+           href={tender.source_url}
+           target="_blank"
+           rel="noreferrer"
+           className="inline-flex items-center text-sm text-blue-600 hover:text-blue-800 hover:underline"
+         >
+           <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
+           View source
+         </a>
           )}
-          {tender.source && (
-            <span className="text-[12px] text-muted-foreground">{tender.source}</span>
-          )}
+
+
         </div>
 
         {/* title */}
@@ -202,14 +224,7 @@ export const TenderDetail = ({
               </SelectContent>
             </Select>
           )}
-          {tender.source_url && (
-            <Button variant="outline" size="sm" className="h-8 text-sm" asChild>
-              <a href={tender.source_url} target="_blank" rel="noreferrer">
-                <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
-                View source
-              </a>
-            </Button>
-          )}
+          
         </div>
       </div>
 
