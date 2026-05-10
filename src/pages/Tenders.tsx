@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/sheet";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EditTenderDialog } from "@/components/tender/EditTenderDialog";
+import { TenderQuickView } from "@/components/Tenderquickview";
 import { getAnonUserId } from "@/lib/anonUser";
 import { formatDate, daysUntil } from "@/lib/format";
 import {
@@ -187,14 +188,12 @@ const TenderCard = ({
   onClick: () => void;
   idx: number;
 }) => {
-  const dDays = daysUntil(t.deadline);
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.18, delay: Math.min(idx * 0.03, 0.25) }}
-      className="relative  py-4 cursor-pointer active:bg-muted/40 transition-colors border-b border-border/50 last:border-0"
+      className="relative py-4 cursor-pointer active:bg-muted/40 transition-colors border-b border-border/50 last:border-0"
       onClick={onClick}
       role="button"
       tabIndex={0}
@@ -202,11 +201,9 @@ const TenderCard = ({
         if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); }
       }}
     >
-      {/* accent line */}
       <span className="absolute left-0 top-3 bottom-3 w-0.5 rounded-full bg-primary/0 transition-colors" />
 
       <div className="flex items-start gap-3">
-        {/* bookmark */}
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); onBookmark(t.id, e); }}
@@ -220,7 +217,6 @@ const TenderCard = ({
           )}
         </button>
 
-        {/* content */}
         <div className="flex-1 min-w-0 space-y-1.5">
           <p className="text-[13px] font-semibold leading-snug text-foreground line-clamp-2">
             {t.title}
@@ -239,22 +235,15 @@ const TenderCard = ({
             </div>
           )}
 
-          {/* chips row */}
           <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
             <StatusBadge status={t.workflow_status} />
-
-            {/* deadline */}
             <DeadlinePill deadline={t.deadline} />
-
-            {/* country */}
             {t.country && (
               <span className="inline-flex items-center gap-1 rounded-full border border-border/70 bg-muted/40 px-2 py-0.5 text-[11px] text-muted-foreground">
                 <Globe className="h-2.5 w-2.5 shrink-0" />
                 {t.country}
               </span>
             )}
-
-            {/* category */}
             {t.category && (
               <span className="inline-flex max-w-[9rem] rounded-lg border border-border/70 bg-muted/30 px-2 py-0.5 text-[11px] font-medium leading-none text-muted-foreground">
                 <span className="truncate">{t.category}</span>
@@ -262,7 +251,6 @@ const TenderCard = ({
             )}
           </div>
 
-          {/* summary */}
           {t.summary_en && (
             <p className="text-[11px] text-muted-foreground/75 line-clamp-2 mt-1">
               {t.summary_en}
@@ -270,17 +258,11 @@ const TenderCard = ({
           )}
         </div>
 
-        {/* admin actions */}
         {isAdmin && (
           <div onClick={(e) => e.stopPropagation()} className="shrink-0">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
-                  aria-label="Tender actions"
-                >
+                <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Tender actions">
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -306,7 +288,6 @@ const Tenders = () => {
   const navigate = useNavigate();
   const [bookmarks, setBookmarks] = useState<Set<string>>(new Set());
   const [page, setPage] = useState(0);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   const [search, setSearch] = useState("");
@@ -319,10 +300,18 @@ const Tenders = () => {
   const [editing, setEditing] = useState<Tender | null>(null);
   const [deleting, setDeleting] = useState<Tender | null>(null);
 
+  // Quick view state
+  const [quickViewTender, setQuickViewTender] = useState<Tender | null>(null);
+  const [quickViewOpen, setQuickViewOpen] = useState(false);
+
   const isAdmin = role === "admin";
   const uid = user?.id ?? getAnonUserId();
 
-  // Keep cached lists fresh when the DB changes (no manual refresh).
+  const openQuickView = (t: Tender) => {
+    setQuickViewTender(t);
+    setQuickViewOpen(true);
+  };
+
   useEffect(() => {
     const tendersChannel = supabase
       .channel("rt:tenders")
@@ -426,8 +415,10 @@ const Tenders = () => {
       if (country !== "all") categoriesQuery = categoriesQuery.eq("country", country);
       if (status !== "all") categoriesQuery = categoriesQuery.eq("workflow_status", status);
 
-      const [{ data: countriesData, error: countriesError }, { data: categoriesData, error: categoriesError }] =
-        await Promise.all([countriesQuery, categoriesQuery]);
+      const [
+        { data: countriesData, error: countriesError },
+        { data: categoriesData, error: categoriesError },
+      ] = await Promise.all([countriesQuery, categoriesQuery]);
 
       if (countriesError) throw new Error(handleDbError(countriesError));
       if (categoriesError) throw new Error(handleDbError(categoriesError));
@@ -532,7 +523,7 @@ const Tenders = () => {
     status !== "all" && status,
   ].filter(Boolean) as string[];
 
-  /* ── Shared filter controls (used in both bar and sheet) ── */
+  /* ── Shared filter controls ── */
   const FilterControls = ({ compact = false }: { compact?: boolean }) => (
     <>
       <Select value={country} onValueChange={setCountry}>
@@ -581,10 +572,9 @@ const Tenders = () => {
             </p>
           </div>
 
-          {/* Stats — horizontal scroll on very small screens */}
           <div className="flex items-center gap-5 sm:gap-6 overflow-x-auto pb-0.5 scrollbar-none">
             <Stat label="Total" value={total.toLocaleString()} />
-            <div className="pl-5 sm:pl-8 ">
+            <div className="pl-5 sm:pl-8">
               <Stat label="Closing soon" value={urgentCount} />
             </div>
             <div className="pl-5 sm:pl-8">
@@ -593,9 +583,9 @@ const Tenders = () => {
           </div>
         </div>
 
-        {/* ── Filters (sticky layer) ── */}
+        {/* ── Filters ── */}
         <div className="sticky top-0 z-30 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-3 bg-background/85 backdrop-blur-md border-y border-border/60">
-          {/* Desktop filter bar (md+) */}
+          {/* Desktop */}
           <div className="hidden md:flex flex-wrap gap-2 items-center">
             <div className="relative flex-1 min-w-[260px] rounded-lg border border-border bg-background">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -609,7 +599,7 @@ const Tenders = () => {
             <FilterControls />
           </div>
 
-          {/* Mobile filter bar (< md): search + filter button */}
+          {/* Mobile */}
           <div className="flex md:hidden gap-2 items-center">
             <div className="relative flex-1 rounded-lg border border-border bg-background">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -649,27 +639,20 @@ const Tenders = () => {
                 <div className="space-y-3">
                   <FilterControls compact />
                 </div>
-                <Button
-                  className="mt-6 w-full"
-                  onClick={() => setFilterSheetOpen(false)}
-                >
+                <Button className="mt-6 w-full" onClick={() => setFilterSheetOpen(false)}>
                   Show results
                 </Button>
               </SheetContent>
             </Sheet>
           </div>
 
-          {/* ── Active filter chips (shared) ── */}
+          {/* Active filter chips */}
           {(country !== "all" || category !== "all" || status !== "all") && (
             <div className="flex gap-2 flex-wrap mt-3">
               {country !== "all" && (
                 <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/50 px-2.5 py-1 text-xs font-medium text-foreground">
                   {country}
-                  <button
-                    onClick={() => setCountry("all")}
-                    className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20 transition-colors"
-                    aria-label="Remove country filter"
-                  >
+                  <button onClick={() => setCountry("all")} className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20 transition-colors" aria-label="Remove country filter">
                     <X className="h-3 w-3" />
                   </button>
                 </span>
@@ -677,11 +660,7 @@ const Tenders = () => {
               {category !== "all" && (
                 <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/50 px-2.5 py-1 text-xs font-medium text-foreground">
                   {category}
-                  <button
-                    onClick={() => setCategory("all")}
-                    className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20 transition-colors"
-                    aria-label="Remove category filter"
-                  >
+                  <button onClick={() => setCategory("all")} className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20 transition-colors" aria-label="Remove category filter">
                     <X className="h-3 w-3" />
                   </button>
                 </span>
@@ -689,11 +668,7 @@ const Tenders = () => {
               {status !== "all" && (
                 <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/50 px-2.5 py-1 text-xs font-medium text-foreground">
                   {status}
-                  <button
-                    onClick={() => setStatus("all")}
-                    className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20 transition-colors"
-                    aria-label="Remove status filter"
-                  >
+                  <button onClick={() => setStatus("all")} className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20 transition-colors" aria-label="Remove status filter">
                     <X className="h-3 w-3" />
                   </button>
                 </span>
@@ -742,7 +717,7 @@ const Tenders = () => {
                       <div className="space-y-1">
                         <p className="text-sm font-medium text-foreground">No tenders found</p>
                         <p className="mx-auto max-w-xs text-xs text-muted-foreground">
-                          Try adjusting your search or filters to find what you&apos;re looking for.
+                          Try adjusting your search or filters to find what you're looking for.
                         </p>
                       </div>
                     </div>
@@ -750,8 +725,7 @@ const Tenders = () => {
                 </TableRow>
               ) : (
                 tenders.map((t, idx) => {
-                  const isExpanded = expandedId === t.id;
-                  const colSpan = isAdmin ? 7 : 6;
+                  const isSelected = quickViewTender?.id === t.id && quickViewOpen;
                   const dDays = daysUntil(t.deadline);
 
                   return (
@@ -764,16 +738,15 @@ const Tenders = () => {
                         className={cn(
                           "group cursor-pointer border-b bg-background transition-colors hover:bg-muted/35",
                           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                          "data-[expanded=true]:bg-muted/25"
+                          isSelected && "bg-muted/25 border-l-2 border-l-primary"
                         )}
-                        data-expanded={isExpanded || undefined}
-                        onClick={() => navigate(`/tender/${t.id}`)}
+                        onClick={() => openQuickView(t)}
                         onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate(`/tender/${t.id}`); }
+                          if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openQuickView(t); }
                         }}
                       >
                         <TableCell className="relative w-11 px-3 py-3 align-middle">
-                          <span className="absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-primary/0 transition-colors group-hover:bg-primary/70 group-data-[expanded=true]:bg-primary/50" />
+                          <span className="absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-primary/0 transition-colors group-hover:bg-primary/70" />
                           <button
                             type="button"
                             onClick={(e) => toggleBookmark(t.id, e)}
@@ -790,11 +763,9 @@ const Tenders = () => {
 
                         <TableCell className="max-w-[min(48vw,28rem)] py-3 pr-4 align-middle lg:max-w-md">
                           <div className="min-w-0 space-y-1">
-                            <div className="flex items-start gap-2">
-                              <span className="text-[13px] font-semibold leading-snug text-foreground line-clamp-2 sm:line-clamp-1">
-                                {t.title}
-                              </span>
-                            </div>
+                            <span className="text-[13px] font-semibold leading-snug text-foreground line-clamp-2 sm:line-clamp-1">
+                              {t.title}
+                            </span>
                             {(t.procuring_entity || t.reference_number) && (
                               <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[12px] text-muted-foreground">
                                 {t.procuring_entity && (
@@ -870,29 +841,6 @@ const Tenders = () => {
                           </TableCell>
                         )}
                       </MotionTableRow>
-
-                      <AnimatePresence>
-                        {isExpanded && t.summary_en && (
-                          <TableRow key={`${t.id}-summary`} className="border-0 hover:bg-transparent">
-                            <TableCell colSpan={colSpan} className="border-b border-border/55 p-0">
-                              <motion.div
-                                initial={{ height: 0, opacity: 0 }}
-                                animate={{ height: "auto", opacity: 1 }}
-                                exit={{ height: 0, opacity: 0 }}
-                                transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-                                className="overflow-hidden"
-                              >
-                                <div className="mx-4 mb-3 rounded-xl border border-primary/15 bg-gradient-to-br from-primary/[0.06] to-muted/30 px-4 py-3.5 shadow-sm">
-                                  <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.16em] text-primary/80">
-                                    AI summary
-                                  </p>
-                                  <p className="text-sm leading-relaxed text-foreground/85">{t.summary_en}</p>
-                                </div>
-                              </motion.div>
-                            </TableCell>
-                          </TableRow>
-                        )}
-                      </AnimatePresence>
                     </Fragment>
                   );
                 })
@@ -920,7 +868,7 @@ const Tenders = () => {
         </div>
 
         {/* ── Mobile card list (< md) ── */}
-        <div className="md:hidden overflow-hidden  ring-1 ring-border/50">
+        <div className="md:hidden overflow-hidden ring-1 ring-border/50">
           {loading ? (
             <SkeletonCards />
           ) : tenders.length === 0 ? (
@@ -947,7 +895,7 @@ const Tenders = () => {
                   onBookmark={toggleBookmark}
                   onEdit={setEditing}
                   onDelete={setDeleting}
-                  onClick={() => navigate(`/tender/${t.id}`)}
+                  onClick={() => openQuickView(t)}
                 />
               ))}
             </div>
@@ -974,7 +922,15 @@ const Tenders = () => {
 
       </PageContainer>
 
-      {/* ── Dialogs ── */}
+      {/* ── Quick view panel ── */}
+      <TenderQuickView
+        tender={quickViewTender}
+        open={quickViewOpen}
+        onOpenChange={setQuickViewOpen}
+        onTenderChanged={() => queryClient.invalidateQueries({ queryKey: ["tenders-list"] })}
+      />
+
+      {/* ── Edit dialog ── */}
       <EditTenderDialog
         tender={editing}
         open={!!editing}
@@ -982,6 +938,7 @@ const Tenders = () => {
         onSaved={() => queryClient.invalidateQueries({ queryKey: ["tenders-list"] })}
       />
 
+      {/* ── Delete dialog ── */}
       <AlertDialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
