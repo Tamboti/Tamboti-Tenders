@@ -6,6 +6,7 @@
 
 import * as cheerio from "https://esm.sh/cheerio@1.0.0-rc.12";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { requireAdmin } from "../_shared/requireAdmin.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -288,6 +289,9 @@ Deno.serve(async (req): Promise<Response> => {
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
+
+  const denied = await requireAdmin(req, supabase);
+  if (denied) return denied;
 
   let batchSize = CONFIG.defaultBatchSize;
   let sourceFilter: string | null = null;
