@@ -3,6 +3,7 @@
 // Detail enrichment (entity details, additional details, AI summary) is handled by `enrich-tenders`.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { requireAdmin } from "../_shared/requireAdmin.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -164,6 +165,9 @@ Deno.serve(async (req): Promise<Response> => {
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
+
+  const denied = await requireAdmin(req, supabase);
+  if (denied) return denied;
 
   let recordsFound = 0;
   let recordsInserted = 0;
