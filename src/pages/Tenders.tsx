@@ -1,16 +1,9 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { ComponentType, Fragment, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Tender, WORKFLOW_STATUSES } from "@/lib/types";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -34,7 +27,6 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { StatusBadge } from "@/components/StatusBadge";
 import { EditTenderDialog } from "@/components/tender/EditTenderDialog";
 import { TenderQuickView } from "@/components/Tenderquickview";
 import { getAnonUserId } from "@/lib/anonUser";
@@ -53,6 +45,11 @@ import {
   Globe,
   SlidersHorizontal,
   X,
+  ChevronDown,
+  Check,
+  Layers,
+  Circle,
+  Calendar,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { handleDbError } from "@/lib/dbError";
@@ -71,8 +68,369 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { PageContainer } from "@/components/layout/PageContainer";
 
 const PAGE_SIZE = 20;
+type DeadlineScope = "active" | "past" | "all";
 
 const MotionTableRow = motion(TableRow);
+
+const COUNTRY_TO_ISO2: Record<string, string> = {
+  afghanistan: "af",
+  albania: "al",
+  algeria: "dz",
+  andorra: "ad",
+  angola: "ao",
+  antiguaandbarbuda: "ag",
+  "antigua and barbuda": "ag",
+  argentina: "ar",
+  armenia: "am",
+  australia: "au",
+  austria: "at",
+  azerbaijan: "az",
+
+  bahamas: "bs",
+  bahrain: "bh",
+  bangladesh: "bd",
+  barbados: "bb",
+  belarus: "by",
+  belgium: "be",
+  belize: "bz",
+  benin: "bj",
+  bhutan: "bt",
+  bolivia: "bo",
+  bosniaandherzegovina: "ba",
+  "bosnia and herzegovina": "ba",
+  botswana: "bw",
+  brazil: "br",
+  brunei: "bn",
+  bulgaria: "bg",
+  burkinafaso: "bf",
+  "burkina faso": "bf",
+  burundi: "bi",
+
+  cambodia: "kh",
+  cameroon: "cm",
+  canada: "ca",
+  capeverde: "cv",
+  "cape verde": "cv",
+  centralafricanrepublic: "cf",
+  "central african republic": "cf",
+  chad: "td",
+  chile: "cl",
+  china: "cn",
+  colombia: "co",
+  comoros: "km",
+  congo: "cg",
+  "republic of the congo": "cg",
+  costarica: "cr",
+  "costa rica": "cr",
+  croatia: "hr",
+  cuba: "cu",
+  cyprus: "cy",
+  czechia: "cz",
+  "czech republic": "cz",
+
+  denmark: "dk",
+  djibouti: "dj",
+  dominica: "dm",
+  dominicanrepublic: "do",
+  "dominican republic": "do",
+
+  ecuador: "ec",
+  egypt: "eg",
+  elsalvador: "sv",
+  "el salvador": "sv",
+  equatorialguinea: "gq",
+  "equatorial guinea": "gq",
+  eritrea: "er",
+  estonia: "ee",
+  eswatini: "sz",
+  swaziland: "sz",
+  ethiopia: "et",
+
+  fiji: "fj",
+  finland: "fi",
+  france: "fr",
+
+  gabon: "ga",
+  gambia: "gm",
+  georgia: "ge",
+  germany: "de",
+  ghana: "gh",
+  greece: "gr",
+  grenada: "gd",
+  guatemala: "gt",
+  guinea: "gn",
+  guineabissau: "gw",
+  "guinea-bissau": "gw",
+  guyana: "gy",
+
+  haiti: "ht",
+  honduras: "hn",
+  hungary: "hu",
+
+  iceland: "is",
+  india: "in",
+  indonesia: "id",
+  iran: "ir",
+  iraq: "iq",
+  ireland: "ie",
+  israel: "il",
+  italy: "it",
+
+  jamaica: "jm",
+  japan: "jp",
+  jordan: "jo",
+
+  kazakhstan: "kz",
+  kenya: "ke",
+  kiribati: "ki",
+  kuwait: "kw",
+  kyrgyzstan: "kg",
+
+  laos: "la",
+  latvia: "lv",
+  lebanon: "lb",
+  lesotho: "ls",
+  liberia: "lr",
+  libya: "ly",
+  liechtenstein: "li",
+  lithuania: "lt",
+  luxembourg: "lu",
+
+  madagascar: "mg",
+  malawi: "mw",
+  malaysia: "my",
+  maldives: "mv",
+  mali: "ml",
+  malta: "mt",
+  marshallislands: "mh",
+  "marshall islands": "mh",
+  mauritania: "mr",
+  mauritius: "mu",
+  mexico: "mx",
+  micronesia: "fm",
+  moldova: "md",
+  monaco: "mc",
+  mongolia: "mn",
+  montenegro: "me",
+  morocco: "ma",
+  mozambique: "mz",
+  myanmar: "mm",
+
+  namibia: "na",
+  nauru: "nr",
+  nepal: "np",
+  netherlands: "nl",
+  newzealand: "nz",
+  "new zealand": "nz",
+  nicaragua: "ni",
+  niger: "ne",
+  nigeria: "ng",
+  northkorea: "kp",
+  "north korea": "kp",
+  northmacedonia: "mk",
+  "north macedonia": "mk",
+  norway: "no",
+
+  oman: "om",
+
+  pakistan: "pk",
+  palau: "pw",
+  palestine: "ps",
+  panama: "pa",
+  papuanewguinea: "pg",
+  "papua new guinea": "pg",
+  paraguay: "py",
+  peru: "pe",
+  philippines: "ph",
+  poland: "pl",
+  portugal: "pt",
+
+  qatar: "qa",
+
+  romania: "ro",
+  russia: "ru",
+  rwanda: "rw",
+
+  saintkittsandnevis: "kn",
+  "saint kitts and nevis": "kn",
+  saintlucia: "lc",
+  "saint lucia": "lc",
+  saintvincentandthegrenadines: "vc",
+  "saint vincent and the grenadines": "vc",
+  samoa: "ws",
+  sanmarino: "sm",
+  "san marino": "sm",
+  saotomeandprincipe: "st",
+  "sao tome and principe": "st",
+  saudiarabia: "sa",
+  "saudi arabia": "sa",
+  senegal: "sn",
+  serbia: "rs",
+  seychelles: "sc",
+  sierraleone: "sl",
+  "sierra leone": "sl",
+  singapore: "sg",
+  slovakia: "sk",
+  slovenia: "si",
+  solomonislands: "sb",
+  "solomon islands": "sb",
+  somalia: "so",
+  southafrica: "za",
+  "south africa": "za",
+  southkorea: "kr",
+  "south korea": "kr",
+  southsudan: "ss",
+  "south sudan": "ss",
+  spain: "es",
+  srilanka: "lk",
+  "sri lanka": "lk",
+  sudan: "sd",
+  suriname: "sr",
+  sweden: "se",
+  switzerland: "ch",
+  syria: "sy",
+
+  taiwan: "tw",
+  tajikistan: "tj",
+  tanzania: "tz",
+  thailand: "th",
+  timorleste: "tl",
+  "timor-leste": "tl",
+  togo: "tg",
+  tonga: "to",
+  trinidadandtobago: "tt",
+  "trinidad and tobago": "tt",
+  tunisia: "tn",
+  turkey: "tr",
+  turkmenistan: "tm",
+  tuvalu: "tv",
+
+  uganda: "ug",
+  ukraine: "ua",
+  unitedarabemirates: "ae",
+  "united arab emirates": "ae",
+  unitedkingdom: "gb",
+  "united kingdom": "gb",
+  uk: "gb",
+  unitedstates: "us",
+  "united states": "us",
+  usa: "us",
+  uruguay: "uy",
+  uzbekistan: "uz",
+
+  vanuatu: "vu",
+  vaticancity: "va",
+  "vatican city": "va",
+  venezuela: "ve",
+  vietnam: "vn",
+
+  yemen: "ye",
+
+  zambia: "zm",
+  zimbabwe: "zw",
+};
+
+const getCountryIso2 = (country: string | null | undefined): string | null => {
+  if (!country) return null;
+  const normalized = country.trim().toLowerCase();
+  if (!normalized) return null;
+  if (normalized === "global" || normalized === "international") return null;
+
+  if (/^[a-z]{2}$/.test(normalized)) return normalized;
+
+  const simplified = normalized.replace(/[^a-z\s]/g, "").replace(/\s+/g, " ").trim();
+  const collapsed = simplified.replace(/\s+/g, "");
+  return COUNTRY_TO_ISO2[simplified] ?? COUNTRY_TO_ISO2[collapsed] ?? null;
+};
+
+const getDisplayCountry = (country: string | null | undefined): string => {
+  if (!country) return "";
+  const normalized = country.trim();
+  if (!normalized) return "";
+
+  const slashParts = normalized
+    .split("/")
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  const candidate = slashParts.length > 1 ? slashParts[slashParts.length - 1] : normalized;
+  return candidate.trim();
+};
+
+const getTodayIsoDate = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const getStatusTone = (status: string) => {
+  const value = status.toLowerCase();
+
+  if (value.includes("awarded") || value.includes("won") || value.includes("completed")) {
+    return "text-emerald-700 dark:text-emerald-400";
+  }
+
+  if (value.includes("review") || value.includes("shortlist") || value.includes("progress")) {
+    return "text-sky-700 dark:text-sky-300";
+  }
+
+  if (value.includes("draft") || value.includes("new") || value.includes("open")) {
+    return "text-violet-700 dark:text-violet-300";
+  }
+
+  if (value.includes("submitted") || value.includes("pending")) {
+    return "text-amber-700 dark:text-amber-300";
+  }
+
+  if (value.includes("cancel") || value.includes("lost") || value.includes("closed")) {
+    return "text-rose-700 dark:text-rose-300";
+  }
+
+  return "text-muted-foreground";
+};
+
+const TenderStatusBadge = ({ status }: { status: string }) => (
+  <span
+    className={cn(
+      "inline-flex max-w-full items-center gap-1.5 rounded-full  px-2.5 py-1 text-[11px] font-semibold leading-none",
+      getStatusTone(status)
+    )}
+  >
+    <span className="h-1.5 w-1.5 rounded-full bg-current opacity-70" />
+    <span className="truncate">{status}</span>
+  </span>
+);
+
+const CountryChip = ({
+  country,
+  compact = false,
+}: {
+  country: string | null | undefined;
+  compact?: boolean;
+}) => {
+  const displayCountry = getDisplayCountry(country);
+  if (!displayCountry) {
+    return <span className="text-sm text-muted-foreground/35">—</span>;
+  }
+  const iso2 = getCountryIso2(displayCountry);
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-full   text-muted-foreground",
+        compact ? "px-2 py-0.5 text-[11px]" : "px-2.5 py-1 text-[12px]"
+      )}
+    >
+      {iso2 ? (
+        <span className={cn("fi rounded-[2px] shadow-sm", `fi-${iso2}`)} aria-hidden="true" />
+      ) : (
+        <Globe className="h-3 w-3 shrink-0 opacity-70" />
+      )}
+      <span className="line-clamp-1">{displayCountry}</span>
+    </span>
+  );
+};
 
 /* ── Deadline pill ───────────────────────────────────────────────── */
 const DeadlinePill = ({ deadline }: { deadline: string | null }) => {
@@ -109,6 +467,117 @@ const Stat = ({
     {sub && <div style={{ fontSize: 12, opacity: 0.6 }}>{sub}</div>}
   </div>
 );
+
+type FilterOption = {
+  value: string;
+  label: string;
+};
+
+const FilterDropdown = ({
+  label,
+  value,
+  options,
+  onChange,
+  icon,
+  compact = false,
+  searchable = false,
+}: {
+  label: string;
+  value: string;
+  options: FilterOption[];
+  onChange: (value: string) => void;
+  icon: ComponentType<{ className?: string }>;
+  compact?: boolean;
+  searchable?: boolean;
+}) => {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const Icon = icon;
+  const selectedLabel = options.find((option) => option.value === value)?.label ?? label;
+  const visibleOptions = searchable
+    ? options.filter((option) => option.label.toLowerCase().includes(query.toLowerCase()))
+    : options;
+
+  useEffect(() => {
+    if (!open) setQuery("");
+  }, [open]);
+
+  return (
+    <div className={cn("relative", compact ? "w-full" : "min-w-[162px]")}>
+      <button
+        type="button"
+        onClick={() => setOpen((current) => !current)}
+        className={cn(
+          "group flex w-full items-center justify-between rounded-xl border px-3 transition-all",
+          "bg-gradient-to-b from-background to-muted/30 hover:from-muted/40 hover:to-muted/70",
+          "border-border/70 shadow-sm hover:border-primary/35",
+          compact ? "h-10" : "h-10"
+        )}
+      >
+        <span className="flex min-w-0 items-center gap-2">
+          <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+            <Icon className="h-3.5 w-3.5" />
+          </span>
+          <span className="truncate text-xs font-medium text-foreground/90">{selectedLabel}</span>
+        </span>
+        <ChevronDown className={cn("h-4 w-4 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")} />
+      </button>
+
+      {open && (
+        <>
+          <button
+            aria-label="Close filter options"
+            type="button"
+            className="fixed inset-0 z-30"
+            onClick={() => setOpen(false)}
+          />
+          <div className="absolute left-0 top-[calc(100%+0.4rem)] z-40 w-full overflow-hidden rounded-xl border border-border/80 bg-background shadow-xl">
+            {searchable && (
+              <div className="border-b border-border/70 p-2">
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder={`Search ${label.toLowerCase()}...`}
+                    className="h-8 pl-8 text-xs"
+                  />
+                </div>
+              </div>
+            )}
+            <div className="max-h-64 overflow-y-auto p-1.5">
+              {visibleOptions.map((option) => {
+                const selected = option.value === value;
+                return (
+                  <button
+                    type="button"
+                    key={option.value}
+                    onClick={() => {
+                      onChange(option.value);
+                      setOpen(false);
+                    }}
+                    className={cn(
+                      "flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left text-sm transition-colors",
+                      selected
+                        ? "bg-primary/10 text-primary"
+                        : "text-foreground/80 hover:bg-muted"
+                    )}
+                  >
+                    <span className="line-clamp-1">{option.label}</span>
+                    {selected ? <Check className="h-3.5 w-3.5" /> : <span className="h-3.5 w-3.5" />}
+                  </button>
+                );
+              })}
+              {visibleOptions.length === 0 && (
+                <div className="px-2.5 py-2 text-xs text-muted-foreground">No matches found</div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
 
 /* ── Skeleton rows (desktop) ─────────────────────────────────────── */
 const SkeletonTableBody = ({ showAdminCol }: { showAdminCol: boolean }) => (
@@ -193,7 +662,7 @@ const TenderCard = ({
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.18, delay: Math.min(idx * 0.03, 0.25) }}
-      className="relative py-4 cursor-pointer active:bg-muted/40 transition-colors border-b border-border/50 last:border-0"
+      className="relative py-4 cursor-pointer active:bg-muted/40 transition-colors border-b  "
       onClick={onClick}
       role="button"
       tabIndex={0}
@@ -236,16 +705,13 @@ const TenderCard = ({
           )}
 
           <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-            <StatusBadge status={t.workflow_status} />
+            <TenderStatusBadge status={t.workflow_status} />
             <DeadlinePill deadline={t.deadline} />
             {t.country && (
-              <span className="inline-flex items-center gap-1 rounded-full border border-border/70 bg-muted/40 px-2 py-0.5 text-[11px] text-muted-foreground">
-                <Globe className="h-2.5 w-2.5 shrink-0" />
-                {t.country}
-              </span>
+              <CountryChip country={t.country} compact />
             )}
             {t.category && (
-              <span className="inline-flex max-w-[9rem] rounded-lg border border-border/70 bg-muted/30 px-2 py-0.5 text-[11px] font-medium leading-none text-muted-foreground">
+              <span className="inline-flex max-w-[9rem] rounded-full border border-border/70 bg-muted/35 px-2 py-0.5 text-[11px] font-semibold leading-none text-muted-foreground">
                 <span className="truncate">{t.category}</span>
               </span>
             )}
@@ -295,6 +761,7 @@ const Tenders = () => {
   const [country, setCountry] = useState<string>("all");
   const [category, setCategory] = useState<string>("all");
   const [status, setStatus] = useState<string>("all");
+  const [deadlineScope, setDeadlineScope] = useState<DeadlineScope>("active");
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
 
   const [editing, setEditing] = useState<Tender | null>(null);
@@ -357,25 +824,42 @@ const Tenders = () => {
     return () => clearTimeout(timeout);
   }, [search]);
 
+  const todayIso = useMemo(() => getTodayIsoDate(), []);
+  const closingSoonMaxIso = useMemo(() => {
+    const now = new Date();
+    now.setDate(now.getDate() + 7);
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }, []);
+
+  const applyCommonFilters = (query: any) => {
+    let next = query.eq("enrichment_status", "enriched");
+    if (debouncedSearch.trim()) {
+      const s = debouncedSearch.trim().replace(/,/g, " ");
+      next = next.or(
+        `title.ilike.%${s}%,procuring_entity.ilike.%${s}%,reference_number.ilike.%${s}%`
+      );
+    }
+    if (country !== "all") next = next.eq("country", country);
+    if (category !== "all") next = next.eq("category", category);
+    if (status !== "all") next = next.eq("workflow_status", status);
+    if (deadlineScope === "active") next = next.gte("deadline", todayIso);
+    if (deadlineScope === "past") next = next.lt("deadline", todayIso);
+    return next;
+  };
+
   const tendersQuery = useQuery({
-    queryKey: ["tenders-list", page, debouncedSearch, country, category, status],
+    queryKey: ["tenders-list", page, debouncedSearch, country, category, status, deadlineScope],
     queryFn: async () => {
-      let query = supabase
+      let query = applyCommonFilters(
+        supabase
         .from("tenders")
         .select("*", { count: "exact" })
         .order("deadline", { ascending: true, nullsFirst: false })
         .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1)
-        .eq("enrichment_status", "enriched");
-
-      if (debouncedSearch.trim()) {
-        const s = debouncedSearch.trim().replace(/,/g, " ");
-        query = query.or(
-          `title.ilike.%${s}%,procuring_entity.ilike.%${s}%,reference_number.ilike.%${s}%`
-        );
-      }
-      if (country !== "all") query = query.eq("country", country);
-      if (category !== "all") query = query.eq("category", category);
-      if (status !== "all") query = query.eq("workflow_status", status);
+      );
 
       const { data, error, count } = await query;
       if (error) throw new Error(handleDbError(error));
@@ -387,7 +871,7 @@ const Tenders = () => {
   });
 
   const facetsQuery = useQuery({
-    queryKey: ["tenders-facets", debouncedSearch, country, category, status],
+    queryKey: ["tenders-facets", debouncedSearch, country, category, status, deadlineScope],
     queryFn: async () => {
       const s = debouncedSearch.trim().replace(/,/g, " ");
 
@@ -402,6 +886,8 @@ const Tenders = () => {
       }
       if (category !== "all") countriesQuery = countriesQuery.eq("category", category);
       if (status !== "all") countriesQuery = countriesQuery.eq("workflow_status", status);
+      if (deadlineScope === "active") countriesQuery = countriesQuery.gte("deadline", todayIso);
+      if (deadlineScope === "past") countriesQuery = countriesQuery.lt("deadline", todayIso);
 
       let categoriesQuery = supabase
         .from("tenders")
@@ -414,6 +900,8 @@ const Tenders = () => {
       }
       if (country !== "all") categoriesQuery = categoriesQuery.eq("country", country);
       if (status !== "all") categoriesQuery = categoriesQuery.eq("workflow_status", status);
+      if (deadlineScope === "active") categoriesQuery = categoriesQuery.gte("deadline", todayIso);
+      if (deadlineScope === "past") categoriesQuery = categoriesQuery.lt("deadline", todayIso);
 
       const [
         { data: countriesData, error: countriesError },
@@ -467,7 +955,37 @@ const Tenders = () => {
     if (bookmarksQuery.error instanceof Error) toast.error(bookmarksQuery.error.message);
   }, [bookmarksQuery.error]);
 
-  useEffect(() => { setPage(0); }, [search, country, category, status]);
+  useEffect(() => { setPage(0); }, [search, country, category, status, deadlineScope]);
+
+  const statsQuery = useQuery({
+    queryKey: ["tenders-stats", debouncedSearch, country, category, status, deadlineScope],
+    queryFn: async () => {
+      const totalQuery = applyCommonFilters(
+        supabase.from("tenders").select("id", { count: "exact", head: true })
+      );
+      const closingSoonQuery = applyCommonFilters(
+        supabase
+          .from("tenders")
+          .select("id", { count: "exact", head: true })
+          .gte("deadline", todayIso)
+          .lte("deadline", closingSoonMaxIso)
+      );
+
+      const [{ count: totalCount, error: totalError }, { count: soonCount, error: soonError }] =
+        await Promise.all([totalQuery, closingSoonQuery]);
+
+      if (totalError) throw new Error(handleDbError(totalError));
+      if (soonError) throw new Error(handleDbError(soonError));
+
+      return {
+        total: totalCount ?? 0,
+        closingSoon: soonCount ?? 0,
+      };
+    },
+    staleTime: 60_000,
+    gcTime: 10 * 60_000,
+    refetchOnWindowFocus: false,
+  });
 
   const toggleBookmark = async (tenderId: string, e?: React.MouseEvent) => {
     e?.stopPropagation();
@@ -512,50 +1030,74 @@ const Tenders = () => {
   const loading = tendersQuery.isLoading;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
-  const urgentCount = useMemo(
-    () => tenders.filter((t) => { const d = daysUntil(t.deadline); return d != null && d >= 0 && d <= 7; }).length,
-    [tenders]
-  );
+  const statsTotal = statsQuery.data?.total ?? total;
+  const urgentCount = statsQuery.data?.closingSoon ?? 0;
 
   const activeFilters = [
     country !== "all" && country,
     category !== "all" && category,
     status !== "all" && status,
+    deadlineScope !== "active" && (deadlineScope === "past" ? "Past deadline" : "All deadlines"),
   ].filter(Boolean) as string[];
+
+  const countryOptions: FilterOption[] = [
+    { value: "all", label: "All countries" },
+    ...countries.map((c) => ({ value: c, label: getDisplayCountry(c) })),
+  ];
+
+  const categoryOptions: FilterOption[] = [
+    { value: "all", label: "All categories" },
+    ...categories.map((c) => ({ value: c, label: c })),
+  ];
+
+  const statusOptions: FilterOption[] = [
+    { value: "all", label: "All statuses" },
+    ...WORKFLOW_STATUSES.map((s) => ({ value: s, label: s })),
+  ];
+
+  const deadlineOptions: FilterOption[] = [
+    { value: "active", label: "Active deadlines" },
+    { value: "past", label: "Past deadlines" },
+    { value: "all", label: "All deadlines" },
+  ];
 
   /* ── Shared filter controls ── */
   const FilterControls = ({ compact = false }: { compact?: boolean }) => (
     <>
-      <Select value={country} onValueChange={setCountry}>
-        <SelectTrigger className={cn("text-sm shadow-sm rounded-lg border border-border", compact ? "h-10 w-full" : "w-[148px] h-9")}>
-          <Globe className="h-3.5 w-3.5 mr-1.5 text-muted-foreground shrink-0" />
-          <SelectValue placeholder="Country" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">All countries</SelectItem>
-          {countries.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-        </SelectContent>
-      </Select>
-
-      <Select value={category} onValueChange={setCategory}>
-        <SelectTrigger className={cn("text-sm shadow-sm rounded-lg border border-border", compact ? "h-10 w-full" : "w-[168px] h-9")}>
-          <SelectValue placeholder="Category" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">All categories</SelectItem>
-          {categories.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-        </SelectContent>
-      </Select>
-
-      <Select value={status} onValueChange={setStatus}>
-        <SelectTrigger className={cn("text-sm shadow-sm rounded-lg border border-border", compact ? "h-10 w-full" : "w-[148px] h-9")}>
-          <SelectValue placeholder="Status" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">All statuses</SelectItem>
-          {WORKFLOW_STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-        </SelectContent>
-      </Select>
+      <FilterDropdown
+        label="Country"
+        value={country}
+        options={countryOptions}
+        onChange={setCountry}
+        icon={Globe}
+        compact={compact}
+        searchable
+      />
+      <FilterDropdown
+        label="Category"
+        value={category}
+        options={categoryOptions}
+        onChange={setCategory}
+        icon={Layers}
+        compact={compact}
+        searchable
+      />
+      <FilterDropdown
+        label="Status"
+        value={status}
+        options={statusOptions}
+        onChange={setStatus}
+        icon={Circle}
+        compact={compact}
+      />
+      <FilterDropdown
+        label="Deadline"
+        value={deadlineScope}
+        options={deadlineOptions}
+        onChange={(value) => setDeadlineScope(value as DeadlineScope)}
+        icon={Calendar}
+        compact={compact}
+      />
     </>
   );
 
@@ -573,7 +1115,7 @@ const Tenders = () => {
           </div>
 
           <div className="flex items-center gap-5 sm:gap-6 overflow-x-auto pb-0.5 scrollbar-none">
-            <Stat label="Total" value={total.toLocaleString()} />
+            <Stat label="Total" value={statsTotal.toLocaleString()} />
             <div className="pl-5 sm:pl-8">
               <Stat label="Closing soon" value={urgentCount} />
             </div>
@@ -587,10 +1129,10 @@ const Tenders = () => {
         <div className="sticky top-0 z-30 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-3 bg-background/85 backdrop-blur-md border-y border-border/60">
           {/* Desktop */}
           <div className="hidden md:flex flex-wrap gap-2 items-center">
-            <div className="relative flex-1 min-w-[260px] rounded-lg border border-border bg-background">
+            <div className="relative flex-1 max-w-[250px] rounded-lg border border-border bg-background">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input
-                placeholder="Search title, entity, reference…"
+                placeholder="Search title, reference…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-8 h-9 text-sm bg-transparent"
@@ -647,11 +1189,11 @@ const Tenders = () => {
           </div>
 
           {/* Active filter chips */}
-          {(country !== "all" || category !== "all" || status !== "all") && (
+          {(country !== "all" || category !== "all" || status !== "all" || deadlineScope !== "active") && (
             <div className="flex gap-2 flex-wrap mt-3">
               {country !== "all" && (
                 <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/50 px-2.5 py-1 text-xs font-medium text-foreground">
-                  {country}
+                  {getDisplayCountry(country)}
                   <button onClick={() => setCountry("all")} className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20 transition-colors" aria-label="Remove country filter">
                     <X className="h-3 w-3" />
                   </button>
@@ -673,34 +1215,40 @@ const Tenders = () => {
                   </button>
                 </span>
               )}
+              {deadlineScope !== "active" && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/50 px-2.5 py-1 text-xs font-medium text-foreground">
+                  {deadlineScope === "past" ? "Past deadline" : "All deadlines"}
+                  <button onClick={() => setDeadlineScope("active")} className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20 transition-colors" aria-label="Remove deadline filter">
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              )}
             </div>
           )}
         </div>
 
         {/* ── Desktop table (md+) ── */}
-        <div className="hidden md:block overflow-hidden shadow-sm rounded-lg border border-border ring-1 ring-border/60 dark:ring-border">
-          <Table className="border-separate z-0 border-spacing-0 [&_tr]:border-border/55">
-            <TableHeader className="[&_tr]:border-b [&_tr]:border-border/70 overflow-hidden">
+        <div className="hidden md:block overflow-hidden bg-background">
+          <Table className="z-0 border-separate border-spacing-0">
+            <TableHeader className="overflow-hidden bg-muted/35">
               <TableRow className="border-0">
-                <TableHead className="sticky top-0 z-10 w-11 bg-muted/80 px-3 py-2.5 shadow-[inset_0_-1px_0_0_hsl(var(--border))] backdrop-blur-md supports-[backdrop-filter]:bg-muted/60" />
-                <TableHead className="sticky top-0 z-10 min-w-[11rem] bg-muted/80 px-3 py-2.5 text-sm font-semibold tracking-wide text-foreground shadow-[inset_0_-1px_0_0_hsl(var(--border))] backdrop-blur-md supports-[backdrop-filter]:bg-muted/60">
+                <TableHead className="sticky top-0 z-10 w-11 border-b border-border/70 bg-muted/55 px-3 py-3 backdrop-blur supports-[backdrop-filter]:bg-muted/45" />
+                <TableHead className="sticky top-0 z-10 min-w-[11rem] border-b border-border/70 bg-muted/55 px-3 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground backdrop-blur supports-[backdrop-filter]:bg-muted/45">
                   Tender
                 </TableHead>
-                <TableHead className="sticky top-0 z-10 hidden w-[7.5rem] bg-muted/80 px-3 py-2.5 text-ms font-medium tracking-wide text-muted-foreground shadow-[inset_0_-1px_0_0_hsl(var(--border))] backdrop-blur-md sm:table-cell supports-[backdrop-filter]:bg-muted/60">
+                <TableHead className="sticky top-0 z-10 hidden w-[7.5rem] border-b border-border/70 bg-muted/55 px-3 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground backdrop-blur sm:table-cell supports-[backdrop-filter]:bg-muted/45">
                   Country
                 </TableHead>
-                <TableHead className="sticky top-0 z-10 hidden min-w-[8.5rem] bg-muted/80 px-3 py-2.5 text-ms font-medium tracking-wide text-muted-foreground shadow-[inset_0_-1px_0_0_hsl(var(--border))] backdrop-blur-md md:table-cell supports-[backdrop-filter]:bg-muted/60">
+                <TableHead className="sticky top-0 z-10 hidden min-w-[4rem] border-b border-border/70 bg-muted/55 px-3 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground backdrop-blur md:table-cell supports-[backdrop-filter]:bg-muted/45">
                   Category
                 </TableHead>
-                <TableHead className="sticky top-0 z-10 w-[7.75rem] whitespace-nowrap bg-muted/80 px-3 py-2.5 text-ms font-medium tracking-wide text-muted-foreground shadow-[inset_0_-1px_0_0_hsl(var(--border))] backdrop-blur-md supports-[backdrop-filter]:bg-muted/60">
+                <TableHead className="sticky top-0 z-10 w-[7.75rem] whitespace-nowrap border-b border-border/70 bg-muted/55 px-3 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground backdrop-blur supports-[backdrop-filter]:bg-muted/45">
                   Deadline
                 </TableHead>
-                <TableHead className="sticky top-0 z-10 w-[8.25rem] bg-muted/80 px-3 py-2.5 text-ms font-medium tracking-wide text-muted-foreground shadow-[inset_0_-1px_0_0_hsl(var(--border))] backdrop-blur-md supports-[backdrop-filter]:bg-muted/60">
+                <TableHead className="sticky top-0 z-10 w-[8.25rem] border-b border-border/70 bg-muted/55 px-3 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground backdrop-blur supports-[backdrop-filter]:bg-muted/45">
                   Status
                 </TableHead>
-                {isAdmin && (
-                  <TableHead className="sticky top-0 z-10 w-11 bg-muted/80 px-2 py-2.5 shadow-[inset_0_-1px_0_0_hsl(var(--border))] backdrop-blur-md supports-[backdrop-filter]:bg-muted/60" />
-                )}
+                
               </TableRow>
             </TableHeader>
 
@@ -736,21 +1284,22 @@ const Tenders = () => {
                         transition={{ duration: 0.15, delay: Math.min(idx * 0.012, 0.2) }}
                         tabIndex={0}
                         className={cn(
-                          "group cursor-pointer border-b bg-background transition-colors hover:bg-muted/35",
+                          "group cursor-pointer border-b border-border/80 transition-all hover:bg-muted/45",
                           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                          isSelected && "bg-muted/25 border-l-2 border-l-primary"
+                          idx % 2 === 0 ? "bg-muted/30" : "bg-background",
+                          isSelected && "bg-primary/[0.07] border-l-2 border-l-primary"
                         )}
                         onClick={() => openQuickView(t)}
                         onKeyDown={(e) => {
                           if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openQuickView(t); }
                         }}
                       >
-                        <TableCell className="relative w-11 px-3 py-3 align-middle">
-                          <span className="absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-primary/0 transition-colors group-hover:bg-primary/70" />
+                        <TableCell className="relative w-11 px-3 py-3.5 align-middle">
+                          <span className="absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-primary/0 transition-colors group-hover:bg-primary/60" />
                           <button
                             type="button"
                             onClick={(e) => toggleBookmark(t.id, e)}
-                            className="relative z-0 inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                            className="relative z-0 inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                             aria-label={bookmarks.has(t.id) ? "Remove bookmark" : "Save tender"}
                           >
                             {bookmarks.has(t.id) ? (
@@ -761,7 +1310,7 @@ const Tenders = () => {
                           </button>
                         </TableCell>
 
-                        <TableCell className="max-w-[min(48vw,28rem)] py-3 pr-4 align-middle lg:max-w-md">
+                        <TableCell className="max-w-[min(48vw,28rem)] py-3.5 pr-4 align-middle lg:max-w-md">
                           <div className="min-w-0 space-y-1">
                             <span className="text-[13px] font-semibold leading-snug text-foreground line-clamp-2 sm:line-clamp-1">
                               {t.title}
@@ -778,29 +1327,27 @@ const Tenders = () => {
                                 )}
                               </div>
                             )}
-                            {t.summary_en && (
-                              <div className="text-xs text-muted-foreground/80 line-clamp-2 mt-1">
-                                {t.summary_en}
-                              </div>
-                            )}
+                           
                           </div>
                         </TableCell>
 
-                        <TableCell className="hidden py-3 align-middle text-[13px] text-muted-foreground sm:table-cell">
-                          <span className="line-clamp-2">{t.country ?? "—"}</span>
+                        <TableCell className="hidden py-3.5 align-middle text-[13px] text-muted-foreground sm:table-cell">
+                          <CountryChip country={t.country} />
                         </TableCell>
 
-                        <TableCell className="hidden py-3 align-middle md:table-cell">
+                        <TableCell className="hidden py-3.5 align-middle md:table-cell">
                           {t.category ? (
-                            <span className="inline-flex max-w-full rounded-lg border border-border/80 bg-muted/30 px-2 py-1 text-[11px] font-medium leading-none text-muted-foreground">
-                              <span className="truncate">{t.category}</span>
-                            </span>
+                          <span className="inline-flex max-w-full rounded-full border border-border/70 bg-muted/40 px-2.5 py-1 text-[11px] font-semibold leading-none text-muted-foreground overflow-hidden">
+                          <span className="truncate max-w-[90px] block">
+                            {t.category}
+                          </span>
+                        </span>
                           ) : (
                             <span className="text-sm text-muted-foreground/35">—</span>
                           )}
                         </TableCell>
 
-                        <TableCell className="text-sm whitespace-nowrap">
+                        <TableCell className="whitespace-nowrap py-3.5 text-sm">
                           <div className="text-[13px] font-semibold leading-snug text-foreground">{formatDate(t.deadline)}</div>
                           {dDays != null && (
                             <div className={cn(
@@ -812,34 +1359,11 @@ const Tenders = () => {
                           )}
                         </TableCell>
 
-                        <TableCell className="py-3 align-middle">
-                          <StatusBadge status={t.workflow_status} />
+                        <TableCell className="py-3.5 align-middle">
+                          <TenderStatusBadge status={t.workflow_status} />
                         </TableCell>
 
-                        {isAdmin && (
-                          <TableCell className="w-11 px-2 py-3 align-middle" onClick={(e) => e.stopPropagation()}>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
-                                  aria-label="Tender actions"
-                                >
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="text-sm">
-                                <DropdownMenuItem onClick={() => setEditing(t)}>
-                                  <Pencil className="mr-2 h-3 w-3" /> Edit
-                                </DropdownMenuItem>
-                                <DropdownMenuItem className="text-destructive" onClick={() => setDeleting(t)}>
-                                  <Trash2 className="mr-2 h-3 w-3" /> Delete
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
-                        )}
+                        
                       </MotionTableRow>
                     </Fragment>
                   );
@@ -849,7 +1373,7 @@ const Tenders = () => {
           </Table>
 
           {/* Desktop Pagination */}
-          <div className="flex items-center justify-between border-t border-border/80 bg-muted/25 px-4 py-3">
+          <div className="flex items-center justify-between bg-muted/20 px-4 py-3">
             <span className="text-xs text-muted-foreground tabular-nums">
               {total === 0
                 ? "No results"
@@ -902,7 +1426,7 @@ const Tenders = () => {
           )}
 
           {/* Mobile Pagination */}
-          <div className="flex items-center justify-between border-t border-border/80 bg-muted/25 px-4 py-3">
+          <div className="flex items-center justify-between bg-muted/25 px-4 py-3">
             <span className="text-xs text-muted-foreground tabular-nums">
               {total === 0
                 ? "No results"
