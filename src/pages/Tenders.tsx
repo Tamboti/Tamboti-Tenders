@@ -834,10 +834,18 @@ const Tenders = () => {
     return `${year}-${month}-${day}`;
   }, []);
 
+  const sanitizeSearch = (raw: string) =>
+    raw
+      .trim()
+      // Strip PostgREST filter-syntax delimiters and ILIKE wildcards.
+      .replace(/[,()*\\%_:.]/g, " ")
+      .replace(/\s+/g, " ")
+      .slice(0, 100);
+
   const applyCommonFilters = (query: any) => {
     let next = query.eq("enrichment_status", "enriched");
-    if (debouncedSearch.trim()) {
-      const s = debouncedSearch.trim().replace(/,/g, " ");
+    const s = sanitizeSearch(debouncedSearch);
+    if (s) {
       next = next.or(
         `title.ilike.%${s}%,procuring_entity.ilike.%${s}%,reference_number.ilike.%${s}%`
       );
@@ -873,7 +881,7 @@ const Tenders = () => {
   const facetsQuery = useQuery({
     queryKey: ["tenders-facets", debouncedSearch, country, category, status, deadlineScope],
     queryFn: async () => {
-      const s = debouncedSearch.trim().replace(/,/g, " ");
+      const s = sanitizeSearch(debouncedSearch);
 
       let countriesQuery = supabase
         .from("tenders")
