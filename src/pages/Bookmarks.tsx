@@ -20,6 +20,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { TenderTable } from "@/components/tender/TenderTable";
 
 const PAGE_SIZE = 20;
 
@@ -517,97 +518,21 @@ const Bookmarks = () => {
       )}
 
       {/* ── Desktop table (md+) ── */}
-      <div className="hidden md:block overflow-hidden bg-background">
-        <Table className="z-0 border-separate border-spacing-0">
-          <TableHeader className="overflow-hidden bg-muted/35">
-            <TableRow>
-              <TableHead className="w-11 border-b border-border/70 bg-muted/55 px-3 py-3" />
-              <TableHead className="w-[42%] border-b border-border/70 bg-muted/55 px-3 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">Tender</TableHead>
-              <TableHead className="border-b border-border/70 bg-muted/55 px-3 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">Country</TableHead>
-              <TableHead className="border-b border-border/70 bg-muted/55 px-3 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">Category</TableHead>
-              <TableHead className="border-b border-border/70 bg-muted/55 px-3 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">Deadline</TableHead>
-              <TableHead className="border-b border-border/70 bg-muted/55 px-3 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">Status</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              <SkeletonRows />
-            ) : pageItems.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} className="py-0">
-                  {sorted.length === 0 ? (
-                    <EmptyState />
-                  ) : (
-                    <div className="py-14 text-center text-sm text-muted-foreground">
-                      No results. Try clearing filters or search.
-                    </div>
-                  )}
-                </TableCell>
-              </TableRow>
-            ) : (
-              pageItems.map((t, idx) => {
-                const dueIn = daysUntil(t.deadline);
-                return (
-                  <TableRow
-                    key={t.id}
-                    className={cn(
-                      "cursor-pointer border-b border-border/80 transition-all hover:bg-muted/45",
-                      idx % 2 === 0 ? "bg-muted/30" : "bg-background"
-                    )}
-                    onClick={() => navigate(`/tender/${t.id}`)}
-                  >
-                    <TableCell className="relative w-11 px-3 py-3.5 align-middle">
-                      <button
-                        type="button"
-                        onClick={(e) => removeBookmark(t.id, e)}
-                        className="relative z-0 inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                        aria-label="Remove bookmark"
-                      >
-                        <BookmarkCheck className="h-4 w-4 text-foreground" />
-                      </button>
-                    </TableCell>
-                    <TableCell className="max-w-[min(48vw,28rem)] py-3.5 pr-4 align-middle lg:max-w-md">
-                      <div className="space-y-1">
-                        <p className="text-[13px] font-semibold leading-snug text-foreground line-clamp-2 sm:line-clamp-1">{t.title}</p>
-                        {t.procuring_entity && (
-                          <p className="text-[12px] text-muted-foreground line-clamp-1">
-                            {t.procuring_entity}
-                          </p>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="py-3.5 align-middle">
-                      <CountryChip country={t.country} />
-                    </TableCell>
-                    <TableCell className="py-3.5 align-middle">
-                      {t.category ? (
-                        <span className="inline-flex max-w-full rounded-full border border-border/70 bg-muted/40 px-2.5 py-1 text-[11px] font-semibold leading-none text-muted-foreground overflow-hidden">
-                          <span className="truncate max-w-[90px] block">{t.category}</span>
-                        </span>
-                      ) : (
-                        <span className="text-sm text-muted-foreground/35">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap py-3.5 text-sm">
-                      <div className="text-[13px] font-semibold leading-snug text-foreground">{formatDate(t.deadline)}</div>
-                      {dueIn != null && (
-                        <div className={cn(
-                          "text-[10px]",
-                          dueIn < 0 ? "text-destructive" : dueIn < 7 ? "text-warning" : "text-muted-foreground"
-                        )}>
-                          {dueIn < 0 ? `${Math.abs(dueIn)}d ago` : `in ${dueIn}d`}
-                        </div>
-                      )}
-                    </TableCell>
-                    <TableCell className="py-3.5 align-middle">
-                      <TenderStatusBadge status={t.workflow_status} />
-                    </TableCell>
-                  </TableRow>
-                );
-              })
-            )}
-          </TableBody>
-        </Table>
+      <div className="hidden md:block">
+        <TenderTable
+          tenders={pageItems}
+          loading={loading}
+          onRowClick={(t) => navigate(`/tender/${t.id}`)}
+          leadingAction={() => ({ type: "bookmark-remove", isBookmarked: true })}
+          onLeadingAction={(t, e) => removeBookmark(t.id, e)}
+          emptyState={
+            sorted.length === 0 ? <EmptyState /> : (
+              <div className="py-14 text-center text-sm text-muted-foreground">
+                No results. Try clearing filters or search.
+              </div>
+            )
+          }
+        />
       </div>
 
       {/* ── Mobile card list (< md) ── */}
