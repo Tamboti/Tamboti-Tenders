@@ -25,21 +25,27 @@ const MotionRow = motion(TableRow);
 
 const StatusDot = ({ status }: { status: string }) => {
   const v = status.toLowerCase();
-  let tone = "text-muted-foreground bg-muted-foreground/60";
-  if (v.includes("awarded") || v.includes("won") || v.includes("completed"))
-    tone = "text-emerald-600 dark:text-emerald-400 bg-emerald-500";
-  else if (v.includes("review") || v.includes("shortlist") || v.includes("progress"))
-    tone = "text-sky-600 dark:text-sky-400 bg-sky-500";
-  else if (v.includes("draft") || v.includes("new") || v.includes("open"))
-    tone = "text-violet-600 dark:text-violet-400 bg-violet-500";
-  else if (v.includes("submitted") || v.includes("pending"))
-    tone = "text-amber-600 dark:text-amber-400 bg-amber-500";
-  else if (v.includes("cancel") || v.includes("lost") || v.includes("closed"))
-    tone = "text-rose-600 dark:text-rose-400 bg-rose-500";
-  const [textTone, dotTone] = tone.split(" bg-");
+  let textTone = "text-muted-foreground";
+  let dotClass = "bg-muted-foreground/60";
+  if (v.includes("awarded") || v.includes("won") || v.includes("completed")) {
+    textTone = "text-emerald-700 dark:text-emerald-400";
+    dotClass = "bg-emerald-500";
+  } else if (v.includes("review") || v.includes("shortlist") || v.includes("progress")) {
+    textTone = "text-sky-700 dark:text-sky-400";
+    dotClass = "bg-sky-500";
+  } else if (v.includes("draft") || v.includes("new") || v.includes("open")) {
+    textTone = "text-violet-700 dark:text-violet-400";
+    dotClass = "bg-violet-500";
+  } else if (v.includes("submitted") || v.includes("pending")) {
+    textTone = "text-amber-700 dark:text-amber-400";
+    dotClass = "bg-amber-500";
+  } else if (v.includes("cancel") || v.includes("lost") || v.includes("closed")) {
+    textTone = "text-rose-700 dark:text-rose-400";
+    dotClass = "bg-rose-500";
+  }
   return (
     <span className={cn("inline-flex items-center gap-2 text-[12px] font-medium", textTone)}>
-      <span className={cn("h-1.5 w-1.5 rounded-full", `bg-${dotTone}`)} />
+      <span className={cn("h-1.5 w-1.5 rounded-full", dotClass)} />
       <span className="truncate">{status}</span>
     </span>
   );
