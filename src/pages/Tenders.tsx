@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/sheet";
 import { EditTenderDialog } from "@/components/tender/EditTenderDialog";
 import { TenderQuickView } from "@/components/Tenderquickview";
+import { TenderTable } from "@/components/tender/TenderTable";
 import { getAnonUserId } from "@/lib/anonUser";
 import { formatDate, daysUntil } from "@/lib/format";
 import {
@@ -1236,152 +1237,34 @@ const Tenders = () => {
         </div>
 
         {/* ── Desktop table (md+) ── */}
-        <div className="hidden md:block overflow-hidden bg-background">
-          <Table className="z-0 border-separate border-spacing-0">
-            <TableHeader className="overflow-hidden bg-muted/35">
-              <TableRow className="border-0">
-                <TableHead className="sticky top-0 z-10 w-11 border-b border-border/70 bg-muted/55 px-3 py-3 backdrop-blur supports-[backdrop-filter]:bg-muted/45" />
-                <TableHead className="sticky top-0 z-10 min-w-[11rem] border-b border-border/70 bg-muted/55 px-3 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground backdrop-blur supports-[backdrop-filter]:bg-muted/45">
-                  Tender
-                </TableHead>
-                <TableHead className="sticky top-0 z-10 hidden w-[7.5rem] border-b border-border/70 bg-muted/55 px-3 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground backdrop-blur sm:table-cell supports-[backdrop-filter]:bg-muted/45">
-                  Country
-                </TableHead>
-                <TableHead className="sticky top-0 z-10 hidden min-w-[4rem] border-b border-border/70 bg-muted/55 px-3 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground backdrop-blur md:table-cell supports-[backdrop-filter]:bg-muted/45">
-                  Category
-                </TableHead>
-                <TableHead className="sticky top-0 z-10 w-[7.75rem] whitespace-nowrap border-b border-border/70 bg-muted/55 px-3 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground backdrop-blur supports-[backdrop-filter]:bg-muted/45">
-                  Deadline
-                </TableHead>
-                <TableHead className="sticky top-0 z-10 w-[8.25rem] border-b border-border/70 bg-muted/55 px-3 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground backdrop-blur supports-[backdrop-filter]:bg-muted/45">
-                  Status
-                </TableHead>
-                
-              </TableRow>
-            </TableHeader>
-
-            <TableBody>
-              {loading ? (
-                <SkeletonTableBody showAdminCol={isAdmin} />
-              ) : tenders.length === 0 ? (
-                <TableRow className="border-0 hover:bg-transparent">
-                  <TableCell colSpan={isAdmin ? 7 : 6} className="h-auto py-16 text-center">
-                    <div className="flex flex-col items-center gap-3">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-muted/60">
-                        <TrendingUp className="h-6 w-6 text-muted-foreground/50" />
-                      </div>
-                      <div className="space-y-1">
-                        <p className="text-sm font-medium text-foreground">No tenders found</p>
-                        <p className="mx-auto max-w-xs text-xs text-muted-foreground">
-                          Try adjusting your search or filters to find what you're looking for.
-                        </p>
-                      </div>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                tenders.map((t, idx) => {
-                  const isSelected = quickViewTender?.id === t.id && quickViewOpen;
-                  const dDays = daysUntil(t.deadline);
-
-                  return (
-                    <Fragment key={t.id}>
-                      <MotionTableRow
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ duration: 0.15, delay: Math.min(idx * 0.012, 0.2) }}
-                        tabIndex={0}
-                        className={cn(
-                          "group cursor-pointer border-b border-border/80 transition-all hover:bg-muted/45",
-                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                          idx % 2 === 0 ? "bg-muted/30" : "bg-background",
-                          isSelected && "bg-primary/[0.07] border-l-2 border-l-primary"
-                        )}
-                        onClick={() => openQuickView(t)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openQuickView(t); }
-                        }}
-                      >
-                        <TableCell className="relative w-11 px-3 py-3.5 align-middle">
-                          <span className="absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-primary/0 transition-colors group-hover:bg-primary/60" />
-                          <button
-                            type="button"
-                            onClick={(e) => toggleBookmark(t.id, e)}
-                            className="relative z-0 inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                            aria-label={bookmarks.has(t.id) ? "Remove bookmark" : "Save tender"}
-                          >
-                            {bookmarks.has(t.id) ? (
-                              <BookmarkCheck className="h-4 w-4 text-foreground" />
-                            ) : (
-                              <Bookmark className="h-4 w-4 opacity-40 group-hover:opacity-100" />
-                            )}
-                          </button>
-                        </TableCell>
-
-                        <TableCell className="max-w-[min(48vw,28rem)] py-3.5 pr-4 align-middle lg:max-w-md">
-                          <div className="min-w-0 space-y-1">
-                            <span className="text-[13px] font-semibold leading-snug text-foreground line-clamp-2 sm:line-clamp-1">
-                              {t.title}
-                            </span>
-                            {(t.procuring_entity || t.reference_number) && (
-                              <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[12px] text-muted-foreground">
-                                {t.procuring_entity && (
-                                  <span className="line-clamp-1">{t.procuring_entity}</span>
-                                )}
-                                {t.reference_number && (
-                                  <span className="font-mono text-[11px] tabular-nums text-muted-foreground/70">
-                                    {t.reference_number}
-                                  </span>
-                                )}
-                              </div>
-                            )}
-                           
-                          </div>
-                        </TableCell>
-
-                        <TableCell className="hidden py-3.5 align-middle text-[13px] text-muted-foreground sm:table-cell">
-                          <CountryChip country={t.country} />
-                        </TableCell>
-
-                        <TableCell className="hidden py-3.5 align-middle md:table-cell">
-                          {t.category ? (
-                          <span className="inline-flex max-w-full rounded-full border border-border/70 bg-muted/40 px-2.5 py-1 text-[11px] font-semibold leading-none text-muted-foreground overflow-hidden">
-                          <span className="truncate max-w-[90px] block">
-                            {t.category}
-                          </span>
-                        </span>
-                          ) : (
-                            <span className="text-sm text-muted-foreground/35">—</span>
-                          )}
-                        </TableCell>
-
-                        <TableCell className="whitespace-nowrap py-3.5 text-sm">
-                          <div className="text-[13px] font-semibold leading-snug text-foreground">{formatDate(t.deadline)}</div>
-                          {dDays != null && (
-                            <div className={cn(
-                              "text-[10px]",
-                              dDays < 0 ? "text-destructive" : dDays < 7 ? "text-warning" : "text-muted-foreground"
-                            )}>
-                              {dDays < 0 ? `${Math.abs(dDays)}d ago` : `in ${dDays}d`}
-                            </div>
-                          )}
-                        </TableCell>
-
-                        <TableCell className="py-3.5 align-middle">
-                          <TenderStatusBadge status={t.workflow_status} />
-                        </TableCell>
-
-                        
-                      </MotionTableRow>
-                    </Fragment>
-                  );
-                })
-              )}
-            </TableBody>
-          </Table>
+        <div className="hidden md:block">
+          <TenderTable
+            tenders={tenders}
+            loading={loading}
+            isSelected={(t) => quickViewTender?.id === t.id && quickViewOpen}
+            onRowClick={(t) => openQuickView(t)}
+            leadingAction={(t) => ({ type: "bookmark-toggle", isBookmarked: bookmarks.has(t.id) })}
+            onLeadingAction={(t, e) => toggleBookmark(t.id, e)}
+            showActions={isAdmin}
+            onEdit={setEditing}
+            onDelete={setDeleting}
+            emptyState={
+              <div className="flex flex-col items-center gap-3 py-16 px-4 text-center">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-muted/60">
+                  <TrendingUp className="h-6 w-6 text-muted-foreground/50" />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-foreground">No tenders found</p>
+                  <p className="mx-auto max-w-xs text-xs text-muted-foreground">
+                    Try adjusting your search or filters to find what you're looking for.
+                  </p>
+                </div>
+              </div>
+            }
+          />
 
           {/* Desktop Pagination */}
-          <div className="flex items-center justify-between bg-muted/20 px-4 py-3">
+          <div className="flex items-center justify-between px-1 pt-4">
             <span className="text-xs text-muted-foreground tabular-nums">
               {total === 0
                 ? "No results"
