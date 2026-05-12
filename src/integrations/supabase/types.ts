@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      alert_preferences: {
+        Row: {
+          categories: string[]
+          closing_soon_only: boolean
+          countries: string[]
+          created_at: string
+          emails: string[]
+          enabled: boolean
+          frequency: string
+          id: string
+          last_sent_at: string | null
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          categories?: string[]
+          closing_soon_only?: boolean
+          countries?: string[]
+          created_at?: string
+          emails?: string[]
+          enabled?: boolean
+          frequency?: string
+          id?: string
+          last_sent_at?: string | null
+          name?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          categories?: string[]
+          closing_soon_only?: boolean
+          countries?: string[]
+          created_at?: string
+          emails?: string[]
+          enabled?: boolean
+          frequency?: string
+          id?: string
+          last_sent_at?: string | null
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       alert_rules: {
         Row: {
           active: boolean | null
@@ -43,51 +88,6 @@ export type Database = {
           id?: string
           keyword?: string | null
           min_value_usd?: number | null
-          user_id?: string
-        }
-        Relationships: []
-      }
-      alert_preferences: {
-        Row: {
-          categories: string[]
-          closing_soon_only: boolean
-          created_at: string
-          emails: string[]
-          enabled: boolean
-          frequency: string
-          id: string
-          last_sent_at: string | null
-          name: string
-          countries: string[]
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          categories?: string[]
-          closing_soon_only?: boolean
-          created_at?: string
-          emails?: string[]
-          enabled?: boolean
-          frequency?: string
-          id?: string
-          last_sent_at?: string | null
-          name?: string
-          countries?: string[]
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          categories?: string[]
-          closing_soon_only?: boolean
-          created_at?: string
-          emails?: string[]
-          enabled?: boolean
-          frequency?: string
-          id?: string
-          last_sent_at?: string | null
-          name?: string
-          countries?: string[]
-          updated_at?: string
           user_id?: string
         }
         Relationships: []
@@ -186,6 +186,7 @@ export type Database = {
       tenders: {
         Row: {
           category: string | null
+          contact_information: string | null
           contract_duration_days: number | null
           country: string | null
           created_at: string | null
@@ -220,6 +221,7 @@ export type Database = {
         }
         Insert: {
           category?: string | null
+          contact_information?: string | null
           contract_duration_days?: number | null
           country?: string | null
           created_at?: string | null
@@ -254,6 +256,7 @@ export type Database = {
         }
         Update: {
           category?: string | null
+          contact_information?: string | null
           contract_duration_days?: number | null
           country?: string | null
           created_at?: string | null
