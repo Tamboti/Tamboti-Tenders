@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { toast } from "@/components/ui/sonner";
 import { Loader2, Play, Globe, CheckCircle2, XCircle, Clock3 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { handleDbError } from "@/lib/dbError";
 
 type ScrapeLog = {
   id: string;
@@ -58,7 +59,7 @@ export default function Sources() {
       .order("ran_at", { ascending: false })
       .limit(50);
     if (error) {
-      toast.error("Failed to load scrape logs", { description: error.message });
+      toast.error(handleDbError(error, "Failed to load scrape logs"));
     } else {
       setLogs((data as ScrapeLog[]) ?? []);
     }

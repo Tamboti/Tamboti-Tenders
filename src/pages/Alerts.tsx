@@ -236,8 +236,8 @@ function AlertModal({
   initial: AlertPreference | null;
   countries: string[];
   categories: string[];
-  onSave: (draft: AlertDraft, emailRaw: string) => Promise<void>;
-  onDelete?: () => Promise<void>;
+  onSave: (draft: AlertDraft, emailRaw: string) => Promise<unknown>;
+  onDelete?: () => Promise<unknown>;
   saving: boolean;
   deleting: boolean;
 }) {

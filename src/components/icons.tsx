@@ -41,8 +41,9 @@ import {
 } from "iconoir-react";
 
 type IconProps = ComponentProps<typeof ISearch>;
+type IconComponent = (props: IconProps) => JSX.Element;
 
-const withDefaultStroke = (Icon: (props: IconProps) => JSX.Element) => {
+const withDefaultStroke = (Icon: any): IconComponent => {
   const Wrapped = ({ strokeWidth = 1.9, ...props }: IconProps) => (
     <Icon strokeWidth={strokeWidth} {...props} />
   );

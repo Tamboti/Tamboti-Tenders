@@ -48,7 +48,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const fetchRole = async (currentUser: User) => {
-    const metadataRole = currentUser.app_metadata?.role ?? currentUser.user_metadata?.role;
+    // Only trust server-controlled app_metadata. Never read user_metadata
+    // for role decisions — users can write their own user_metadata.
+    const metadataRole = currentUser.app_metadata?.role;
 
     const { data, error } = await supabase
       .from("user_profiles")
@@ -57,7 +59,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       .maybeSingle();
 
     if (error) {
-      console.warn("Role lookup failed:", error.message);
+      console.warn("Role lookup failed");
       if (metadataRole === "admin" || metadataRole === "viewer") {
         setRole(metadataRole);
         return;
