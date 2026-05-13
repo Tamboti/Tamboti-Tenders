@@ -724,26 +724,6 @@ const TenderCard = ({
             </p>
           )}
         </div>
-
-        {isAdmin && (
-          <div onClick={(e) => e.stopPropagation()} className="shrink-0">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Tender actions">
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="text-sm">
-                <DropdownMenuItem onClick={() => onEdit(t)}>
-                  <Pencil className="mr-2 h-3 w-3" /> Edit
-                </DropdownMenuItem>
-                <DropdownMenuItem className="text-destructive" onClick={() => onDelete(t)}>
-                  <Trash2 className="mr-2 h-3 w-3" /> Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        )}
       </div>
     </motion.div>
   );

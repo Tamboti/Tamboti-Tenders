@@ -17,7 +17,7 @@ export const CountryCell = ({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-2 text-foreground/90",
+        "inline-flex items-center gap-2 text-foreground/90  truncate ",
         compact ? "text-[12px]" : "text-[13px]"
       )}
     >
@@ -26,7 +26,7 @@ export const CountryCell = ({
       ) : (
         <Globe className="h-3.5 w-3.5 shrink-0 text-muted-foreground/70" />
       )}
-      <span className="truncate">{display}</span>
+      <span className="truncate max-w-[100px] block">{display}</span>
     </span>
   );
 };

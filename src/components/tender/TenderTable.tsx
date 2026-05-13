@@ -133,8 +133,7 @@ export const TenderTable = ({
   onEdit,
   onDelete,
 }: TenderTableProps) => {
-  const cols = 6 + (showActions ? 1 : 0);
-
+  const cols = 6 ;
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-card">
       <Table className="border-separate border-spacing-0">
@@ -146,7 +145,7 @@ export const TenderTable = ({
             <HeaderCell className="w-[8rem]">Category</HeaderCell>
             <HeaderCell className="w-[8rem]">Deadline</HeaderCell>
             <HeaderCell className="w-[9rem]">Status</HeaderCell>
-            {showActions && <HeaderCell className="w-10 px-2" />}
+           
           </TableRow>
         </TableHeader>
 
@@ -203,7 +202,7 @@ export const TenderTable = ({
                     </button>
                   </TableCell>
 
-                  <TableCell className="max-w-[28rem] px-4 py-3.5 align-middle">
+                  <TableCell className="max-w-[35rem] px-4 py-3.5 align-middle">
                     <div className="min-w-0 space-y-0.5">
                       <div className="text-[13.5px] font-medium leading-snug text-foreground line-clamp-1">
                         {t.title}
@@ -223,6 +222,13 @@ export const TenderTable = ({
                           )}
                         </div>
                       )}
+                      {t.summary_en && (
+                      <div className="space-y-2">
+                      <p className="line-clamp-2 text-[13px] leading-relaxed text-muted-foreground">
+                        {t.summary_en}
+                      </p>
+                    </div>
+                    )}
                     </div>
                   </TableCell>
 
@@ -248,29 +254,7 @@ export const TenderTable = ({
                     <StatusDot status={t.workflow_status} />
                   </TableCell>
 
-                  {showActions && (
-                    <TableCell className="w-10 px-2 py-3.5 align-middle" onClick={(e) => e.stopPropagation()}>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="text-sm">
-                          {onEdit && (
-                            <DropdownMenuItem onClick={() => onEdit(t)}>
-                              <Pencil className="mr-2 h-3.5 w-3.5" /> Edit
-                            </DropdownMenuItem>
-                          )}
-                          {onDelete && (
-                            <DropdownMenuItem className="text-destructive" onClick={() => onDelete(t)}>
-                              <Trash2 className="mr-2 h-3.5 w-3.5" /> Delete
-                            </DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  )}
+
                 </MotionRow>
               );
             })
