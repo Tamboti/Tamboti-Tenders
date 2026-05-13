@@ -26,9 +26,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { handleDbError } from "@/lib/dbError";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { User } from "iconoir-react";
+import { Bookmark, BookmarkCheck } from "lucide-react";
 
 /* ─── tiny helpers ──────────────────────────────────────────────── */
 
