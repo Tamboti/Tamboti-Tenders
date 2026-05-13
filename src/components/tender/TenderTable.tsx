@@ -136,7 +136,111 @@ export const TenderTable = ({
   const cols = 6 ;
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-card">
-      <Table className="border-separate border-spacing-0">
+      {/* Mobile card list */}
+      <div className="md:hidden divide-y divide-border/60">
+        {loading ? (
+          Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="animate-pulse p-4 space-y-3">
+              <div className="h-3.5 w-4/5 rounded bg-muted" />
+              <div className="h-3 w-3/5 rounded bg-muted/70" />
+              <div className="flex gap-2">
+                <div className="h-5 w-16 rounded-full bg-muted/60" />
+                <div className="h-5 w-20 rounded-full bg-muted/50" />
+              </div>
+            </div>
+          ))
+        ) : tenders.length === 0 ? (
+          emptyState ?? (
+            <div className="py-16 text-center text-sm text-muted-foreground">No tenders found.</div>
+          )
+        ) : (
+          tenders.map((t) => {
+            const action = leadingAction(t);
+            const selected = isSelected?.(t) ?? false;
+            const d = daysUntil(t.deadline);
+            return (
+              <div
+                key={t.id}
+                role="button"
+                tabIndex={0}
+                onClick={() => onRowClick?.(t)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    onRowClick?.(t);
+                  }
+                }}
+                className={cn(
+                  "relative px-4 py-3.5 active:bg-muted/40 transition-colors",
+                  selected && "bg-primary/5"
+                )}
+              >
+                {selected && (
+                  <span className="absolute inset-y-3 left-0 w-0.5 rounded-r-full bg-primary" />
+                )}
+                <div className="flex items-start gap-3">
+                  <div className="min-w-0 flex-1 space-y-1.5">
+                    <div className="text-[14px] font-medium leading-snug text-foreground line-clamp-2">
+                      {t.title}
+                    </div>
+                    {t.procuring_entity && (
+                      <div className="text-[12px] text-muted-foreground line-clamp-1">
+                        {t.procuring_entity}
+                      </div>
+                    )}
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 pt-1">
+                      <CountryCell country={t.country} compact />
+                      {t.category && (
+                        <span className="text-[11.5px] text-muted-foreground/80 truncate max-w-[10rem]">
+                          {t.category}
+                        </span>
+                      )}
+                      <StatusDot status={t.workflow_status} />
+                    </div>
+                    {t.deadline && (
+                      <div
+                        className={cn(
+                          "inline-flex items-center gap-1 text-[11px] tabular-nums pt-0.5",
+                          d == null
+                            ? "text-muted-foreground"
+                            : d < 0
+                            ? "text-destructive"
+                            : d <= 7
+                            ? "text-amber-600 dark:text-amber-400"
+                            : "text-muted-foreground"
+                        )}
+                      >
+                        <Clock className="h-3 w-3" />
+                        {formatDate(t.deadline)}
+                        {d != null && (
+                          <span className="opacity-70">
+                            · {d < 0 ? `${Math.abs(d)}d ago` : d === 0 ? "today" : `in ${d}d`}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => onLeadingAction(t, e)}
+                    className="shrink-0 inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+                    aria-label={action.isBookmarked ? "Remove bookmark" : "Save tender"}
+                  >
+                    {action.isBookmarked ? (
+                      <BookmarkCheck className="h-4 w-4 text-foreground" />
+                    ) : (
+                      <Bookmark className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Desktop table */}
+      <Table className="border-separate border-spacing-0 hidden md:table">
         <TableHeader>
           <TableRow className="hover:bg-transparent">
             <HeaderCell className="w-10 px-3" />
