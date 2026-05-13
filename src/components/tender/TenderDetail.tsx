@@ -382,11 +382,36 @@ export const TenderDetail = ({
   tender: Tender;
   onChanged?: () => void;
 }) => {
-  const { role } = useAuth();
-  const isAdmin = role === "admin";
+  const { user } = useAuth();
   const [status, setStatus] = useState(tender.workflow_status);
   const [updating, setUpdating] = useState(false);
+  const [isBookmarked, setIsBookmarked] = useState(false);
+  const [bookmarkBusy, setBookmarkBusy] = useState(false);
   const dDays = daysUntil(tender.deadline);
+
+  useEffect(() => {
+    setStatus(tender.workflow_status);
+  }, [tender.workflow_status]);
+
+  useEffect(() => {
+    if (!user) {
+      setIsBookmarked(false);
+      return;
+    }
+    let cancelled = false;
+    supabase
+      .from("tender_bookmarks")
+      .select("tender_id")
+      .eq("user_id", user.id)
+      .eq("tender_id", tender.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!cancelled) setIsBookmarked(!!data);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user, tender.id]);
 
   const updateStatus = async (next: string) => {
     setUpdating(true);
@@ -401,6 +426,34 @@ export const TenderDetail = ({
     }
     setStatus(next);
     toast.success(`Status updated to ${next}`);
+    onChanged?.();
+  };
+
+  const toggleBookmark = async () => {
+    if (!user) {
+      toast.error("Sign in to save tenders");
+      return;
+    }
+    setBookmarkBusy(true);
+    if (isBookmarked) {
+      const { error } = await supabase
+        .from("tender_bookmarks")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("tender_id", tender.id);
+      setBookmarkBusy(false);
+      if (error) return toast.error(handleDbError(error));
+      setIsBookmarked(false);
+      toast.success("Removed from bookmarks");
+    } else {
+      const { error } = await supabase
+        .from("tender_bookmarks")
+        .insert({ user_id: user.id, tender_id: tender.id });
+      setBookmarkBusy(false);
+      if (error) return toast.error(handleDbError(error));
+      setIsBookmarked(true);
+      toast.success("Saved to bookmarks");
+    }
     onChanged?.();
   };
 
