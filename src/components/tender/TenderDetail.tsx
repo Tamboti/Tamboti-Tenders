@@ -563,11 +563,20 @@ export const TenderDetail = ({
         )}
 
         {/* actions */}
-        <div className="flex flex-wrap items-center gap-2 pt-1">
-          {isAdmin && (
+        <div className="flex flex-wrap items-end gap-3 pt-2">
+          <div className="flex flex-col gap-1.5">
+            <label
+              htmlFor="workflow-status"
+              className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground"
+            >
+              Workflow status
+            </label>
             <Select value={status} onValueChange={updateStatus} disabled={updating}>
-              <SelectTrigger className="h-8 w-[160px] text-sm">
-                <SelectValue />
+              <SelectTrigger
+                id="workflow-status"
+                className="h-10 w-[200px] text-sm font-medium border-2 border-primary/30 bg-primary/5 hover:bg-primary/10 transition-colors shadow-sm"
+              >
+                <SelectValue placeholder="Set status" />
               </SelectTrigger>
               <SelectContent>
                 {WORKFLOW_STATUSES.map((s) => (
@@ -577,8 +586,34 @@ export const TenderDetail = ({
                 ))}
               </SelectContent>
             </Select>
-          )}
-          
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <span className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+              Save
+            </span>
+            <Button
+              type="button"
+              variant={isBookmarked ? "default" : "outline"}
+              size="sm"
+              onClick={toggleBookmark}
+              disabled={bookmarkBusy}
+              className="h-10 gap-2"
+              aria-pressed={isBookmarked}
+            >
+              {isBookmarked ? (
+                <>
+                  <BookmarkCheck className="h-4 w-4" />
+                  Bookmarked
+                </>
+              ) : (
+                <>
+                  <Bookmark className="h-4 w-4" />
+                  Bookmark
+                </>
+              )}
+            </Button>
+          </div>
         </div>
       </div>
 
