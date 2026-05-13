@@ -37,7 +37,6 @@ const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const APP_URL = Deno.env.get("APP_URL") ?? "http://localhost:8080";
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") ?? "";
 const ALERTS_FROM_EMAIL = Deno.env.get("ALERTS_FROM_EMAIL") ?? "alerts@tender-compass.local";
-const ALERTS_CRON_SECRET = Deno.env.get("ALERTS_CRON_SECRET") ?? "";
 
 const json = (status: number, body: Record<string, unknown>) =>
   new Response(JSON.stringify(body), {
@@ -106,13 +105,7 @@ async function sendEmail(to: string[], subject: string, html: string, text: stri
       Authorization: `Bearer ${RESEND_API_KEY}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      from: ALERTS_FROM_EMAIL,
-      to,
-      subject,
-      html,
-      text,
-    }),
+    body: JSON.stringify({ from: ALERTS_FROM_EMAIL, to, subject, html, text }),
   });
   if (!res.ok) {
     const body = await res.text();
@@ -133,16 +126,14 @@ async function fetchMatchingTenders(
     .select("id,title,country,category,procuring_entity,deadline,source,created_at")
     .eq("enrichment_status", "enriched")
     .order("created_at", { ascending: false })
-    .limit(50);
+    .limit(100);
 
-  if (!testMode) {
-    if (pref.last_sent_at) query = query.gt("created_at", pref.last_sent_at);
-    if (countries.length > 0) query = query.in("country", countries);
-    if (categories.length > 0) query = query.in("category", categories);
-  } else {
-    if (countries.length > 0) query = query.in("country", countries);
-    if (categories.length > 0) query = query.in("category", categories);
-  }
+  if (countries.length > 0) query = query.in("country", countries);
+  if (categories.length > 0) query = query.in("category", categories);
+
+  // Skip tenders already past deadline (give 1h grace). Skip in test mode too — they're useless.
+  const cutoff = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+  query = query.or(`deadline.is.null,deadline.gte.${cutoff}`);
 
   const { data, error } = await query;
   if (error) throw new Error(error.message);
@@ -158,7 +149,33 @@ async function fetchMatchingTenders(
     });
   }
 
-  return rows;
+  if (!testMode && rows.length > 0) {
+    // Exclude tenders already emailed for this alert preference.
+    const ids = rows.map((r) => r.id);
+    const { data: sentRows, error: sentErr } = await supabase
+      .from("alert_sent_tenders")
+      .select("tender_id")
+      .eq("alert_preference_id", pref.id)
+      .in("tender_id", ids);
+    if (sentErr) throw new Error(sentErr.message);
+    const seen = new Set((sentRows ?? []).map((r: { tender_id: string }) => r.tender_id));
+    rows = rows.filter((r) => !seen.has(r.id));
+  }
+
+  return rows.slice(0, 50);
+}
+
+async function recordSent(
+  supabase: ReturnType<typeof createClient>,
+  prefId: string,
+  tenderIds: string[],
+) {
+  if (tenderIds.length === 0) return;
+  const payload = tenderIds.map((tid) => ({ alert_preference_id: prefId, tender_id: tid }));
+  const { error } = await supabase
+    .from("alert_sent_tenders")
+    .upsert(payload, { onConflict: "alert_preference_id,tender_id", ignoreDuplicates: true });
+  if (error) console.error("recordSent failed", { prefId, error: error.message });
 }
 
 Deno.serve(async (req) => {
@@ -202,8 +219,13 @@ Deno.serve(async (req) => {
     return json(200, { ok: true, sent: true, matched: rows.length, alertId: pref.id });
   }
 
-  // Scheduled run: process all due preferences.
-  if (!ALERTS_CRON_SECRET || cronSecret !== ALERTS_CRON_SECRET) {
+  // Scheduled run: verify shared cron secret from app_secrets table.
+  const { data: secretRow, error: secretErr } = await service
+    .from("app_secrets")
+    .select("value")
+    .eq("name", "alerts_cron_secret")
+    .maybeSingle();
+  if (secretErr || !secretRow?.value || cronSecret !== secretRow.value) {
     return json(401, { error: "Invalid cron secret" });
   }
 
@@ -215,6 +237,7 @@ Deno.serve(async (req) => {
 
   let processed = 0;
   let sent = 0;
+  let totalTenders = 0;
   for (const pref of (prefs ?? []) as AlertPreference[]) {
     if (!isDue(pref)) continue;
     if (!pref.emails?.length) continue;
@@ -223,7 +246,9 @@ Deno.serve(async (req) => {
       const rows = await fetchMatchingTenders(service, pref, false);
       if (rows.length > 0) {
         await sendEmail(pref.emails, buildSubject(rows.length), buildHtml(rows), buildText(rows));
+        await recordSent(service, pref.id, rows.map((r) => r.id));
         sent++;
+        totalTenders += rows.length;
       }
       await service
         .from("alert_preferences")
@@ -234,6 +259,5 @@ Deno.serve(async (req) => {
     }
   }
 
-  return json(200, { ok: true, processed, sent });
+  return json(200, { ok: true, processed, sent, tenders: totalTenders });
 });
-
