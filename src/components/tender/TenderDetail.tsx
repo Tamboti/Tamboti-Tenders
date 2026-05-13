@@ -26,9 +26,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { handleDbError } from "@/lib/dbError";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { User } from "iconoir-react";
+import { Bookmark, BookmarkCheck } from "lucide-react";
 
 /* ─── tiny helpers ──────────────────────────────────────────────── */
 
@@ -381,11 +382,36 @@ export const TenderDetail = ({
   tender: Tender;
   onChanged?: () => void;
 }) => {
-  const { role } = useAuth();
-  const isAdmin = role === "admin";
+  const { user } = useAuth();
   const [status, setStatus] = useState(tender.workflow_status);
   const [updating, setUpdating] = useState(false);
+  const [isBookmarked, setIsBookmarked] = useState(false);
+  const [bookmarkBusy, setBookmarkBusy] = useState(false);
   const dDays = daysUntil(tender.deadline);
+
+  useEffect(() => {
+    setStatus(tender.workflow_status);
+  }, [tender.workflow_status]);
+
+  useEffect(() => {
+    if (!user) {
+      setIsBookmarked(false);
+      return;
+    }
+    let cancelled = false;
+    supabase
+      .from("tender_bookmarks")
+      .select("tender_id")
+      .eq("user_id", user.id)
+      .eq("tender_id", tender.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!cancelled) setIsBookmarked(!!data);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user, tender.id]);
 
   const updateStatus = async (next: string) => {
     setUpdating(true);
@@ -400,6 +426,34 @@ export const TenderDetail = ({
     }
     setStatus(next);
     toast.success(`Status updated to ${next}`);
+    onChanged?.();
+  };
+
+  const toggleBookmark = async () => {
+    if (!user) {
+      toast.error("Sign in to save tenders");
+      return;
+    }
+    setBookmarkBusy(true);
+    if (isBookmarked) {
+      const { error } = await supabase
+        .from("tender_bookmarks")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("tender_id", tender.id);
+      setBookmarkBusy(false);
+      if (error) return toast.error(handleDbError(error));
+      setIsBookmarked(false);
+      toast.success("Removed from bookmarks");
+    } else {
+      const { error } = await supabase
+        .from("tender_bookmarks")
+        .insert({ user_id: user.id, tender_id: tender.id });
+      setBookmarkBusy(false);
+      if (error) return toast.error(handleDbError(error));
+      setIsBookmarked(true);
+      toast.success("Saved to bookmarks");
+    }
     onChanged?.();
   };
 
@@ -509,11 +563,20 @@ export const TenderDetail = ({
         )}
 
         {/* actions */}
-        <div className="flex flex-wrap items-center gap-2 pt-1">
-          {isAdmin && (
+        <div className="flex flex-wrap items-end gap-3 pt-2">
+          <div className="flex flex-col gap-1.5">
+            <label
+              htmlFor="workflow-status"
+              className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground"
+            >
+              Workflow status
+            </label>
             <Select value={status} onValueChange={updateStatus} disabled={updating}>
-              <SelectTrigger className="h-8 w-[160px] text-sm">
-                <SelectValue />
+              <SelectTrigger
+                id="workflow-status"
+                className="h-10 w-[200px] text-sm font-medium border-2 border-primary/30 bg-primary/5 hover:bg-primary/10 transition-colors shadow-sm"
+              >
+                <SelectValue placeholder="Set status" />
               </SelectTrigger>
               <SelectContent>
                 {WORKFLOW_STATUSES.map((s) => (
@@ -523,8 +586,34 @@ export const TenderDetail = ({
                 ))}
               </SelectContent>
             </Select>
-          )}
-          
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <span className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+              Save
+            </span>
+            <Button
+              type="button"
+              variant={isBookmarked ? "default" : "outline"}
+              size="sm"
+              onClick={toggleBookmark}
+              disabled={bookmarkBusy}
+              className="h-10 gap-2"
+              aria-pressed={isBookmarked}
+            >
+              {isBookmarked ? (
+                <>
+                  <BookmarkCheck className="h-4 w-4" />
+                  Bookmarked
+                </>
+              ) : (
+                <>
+                  <Bookmark className="h-4 w-4" />
+                  Bookmark
+                </>
+              )}
+            </Button>
+          </div>
         </div>
       </div>
 
