@@ -92,6 +92,57 @@ export type Database = {
         }
         Relationships: []
       }
+      alert_sent_tenders: {
+        Row: {
+          alert_preference_id: string
+          sent_at: string
+          tender_id: string
+        }
+        Insert: {
+          alert_preference_id: string
+          sent_at?: string
+          tender_id: string
+        }
+        Update: {
+          alert_preference_id?: string
+          sent_at?: string
+          tender_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alert_sent_tenders_alert_preference_id_fkey"
+            columns: ["alert_preference_id"]
+            isOneToOne: false
+            referencedRelation: "alert_preferences"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "alert_sent_tenders_tender_id_fkey"
+            columns: ["tender_id"]
+            isOneToOne: false
+            referencedRelation: "tenders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      app_secrets: {
+        Row: {
+          created_at: string
+          name: string
+          value: string
+        }
+        Insert: {
+          created_at?: string
+          name: string
+          value: string
+        }
+        Update: {
+          created_at?: string
+          name?: string
+          value?: string
+        }
+        Relationships: []
+      }
       scrape_logs: {
         Row: {
           duration_ms: number | null
