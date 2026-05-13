@@ -1,14 +1,18 @@
 import { FormEvent, useState } from "react";
 import { Navigate } from "react-router-dom";
-import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+
+type Mode = "signin" | "signup";
 
 const Login = () => {
   const { session, loading } = useAuth();
+  const [mode, setMode] = useState<Mode>("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   if (!loading && session) {
@@ -20,22 +24,48 @@ const Login = () => {
     const normalized = email.trim().toLowerCase();
     if (!normalized || !password) return;
     setSubmitting(true);
+
+    if (mode === "signup") {
+      const { error } = await supabase.auth.signUp({
+        email: normalized,
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/`,
+          data: fullName.trim() ? { full_name: fullName.trim() } : undefined,
+        },
+      });
+      setSubmitting(false);
+      if (error) {
+        toast.error(error.message || "Could not sign up");
+        return;
+      }
+      // If the project has email confirmations enabled, there will be no session yet.
+      const { data: { session: s } } = await supabase.auth.getSession();
+      if (!s) {
+        toast.success("Account created. Check your email to confirm, then sign in.");
+        setMode("signin");
+      } else {
+        toast.success("Welcome to Tender Compass!");
+      }
+      return;
+    }
+
     const { error } = await supabase.auth.signInWithPassword({
       email: normalized,
       password,
     });
     setSubmitting(false);
-    if (error) {
-      toast.error(error.message || "Could not sign in");
-    }
+    if (error) toast.error(error.message || "Could not sign in");
   };
 
-  const isReady = !submitting && email.trim() && password;
+  const isReady =
+    !submitting &&
+    email.trim() &&
+    password &&
+    (mode === "signin" || password.length >= 6);
 
   return (
     <div className="min-h-screen w-full bg-background flex items-center justify-center p-6">
-
-      {/* Ambient glow */}
       <div
         aria-hidden
         className="pointer-events-none fixed inset-0 flex items-start justify-center overflow-hidden"
@@ -44,8 +74,6 @@ const Login = () => {
       </div>
 
       <div className="relative w-full max-w-[380px] flex flex-col">
-
-        {/* Logo mark */}
         <div className="mb-5">
           <div className="mb-2 flex items-center gap-2">
             <img
@@ -53,26 +81,58 @@ const Login = () => {
               alt="Tender Compass"
               className="h-10 object-contain"
             />
-
           </div>
 
           <h1 className="text-[26px] font-semibold tracking-[-0.5px] text-foreground leading-tight">
-            Welcome back
+            {mode === "signin" ? "Welcome back" : "Create your account"}
           </h1>
           <p className="text-[15px] text-muted-foreground leading-relaxed">
-            Sign in to access a variety of tenders.
+            {mode === "signin"
+              ? "Sign in to access a variety of tenders."
+              : "Sign up to start tracking tenders across Africa."}
           </p>
         </div>
 
-        {/* Form */}
-        <form onSubmit={onSubmit} className="flex flex-col gap-4">
-
-          {/* Email */}
-          <div className="flex flex-col gap-1.5">
-            <label
-              htmlFor="email"
-              className="text-[13px] font-medium text-muted-foreground"
+        {/* Tabs */}
+        <div className="mb-4 inline-flex rounded-[10px] border border-border bg-muted/40 p-1 text-[13px] font-medium">
+          {(["signin", "signup"] as const).map((m) => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => setMode(m)}
+              className={cn(
+                "flex-1 h-8 rounded-[7px] transition-colors",
+                mode === m
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
             >
+              {m === "signin" ? "Sign in" : "Sign up"}
+            </button>
+          ))}
+        </div>
+
+        <form onSubmit={onSubmit} className="flex flex-col gap-4">
+          {mode === "signup" && (
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="fullName" className="text-[13px] font-medium text-muted-foreground">
+                Full name
+              </label>
+              <input
+                id="fullName"
+                type="text"
+                placeholder="Your name"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                autoComplete="name"
+                disabled={submitting}
+                className="h-[46px] w-full px-3.5 rounded-[10px] border border-input bg-background text-[15px] text-foreground placeholder:text-muted-foreground/50 outline-none transition-all duration-150 focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:opacity-50"
+              />
+            </div>
+          )}
+
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="email" className="text-[13px] font-medium text-muted-foreground">
               Email
             </label>
             <input
@@ -84,86 +144,51 @@ const Login = () => {
               autoComplete="email"
               required
               disabled={submitting}
-              className="h-[46px] w-full px-3.5 rounded-[10px] border border-input bg-background text-[15px] text-foreground placeholder:text-muted-foreground/50 outline-none transition-all duration-150 focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="h-[46px] w-full px-3.5 rounded-[10px] border border-input bg-background text-[15px] text-foreground placeholder:text-muted-foreground/50 outline-none transition-all duration-150 focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:opacity-50"
             />
           </div>
 
-          {/* Password */}
           <div className="flex flex-col gap-1.5">
-            <div className="flex items-center justify-between">
-              <label
-                htmlFor="password"
-                className="text-[13px] font-medium text-muted-foreground"
-              >
-                Password
-              </label>
-              <button
-                type="button"
-                className="text-[13px] text-primary font-normal hover:underline"
-              >
-                Forgot password?
-              </button>
-            </div>
+            <label htmlFor="password" className="text-[13px] font-medium text-muted-foreground">
+              Password
+            </label>
             <input
               id="password"
               type="password"
-              placeholder="••••••••"
+              placeholder={mode === "signup" ? "At least 6 characters" : "••••••••"}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              autoComplete="current-password"
+              autoComplete={mode === "signup" ? "new-password" : "current-password"}
               required
+              minLength={mode === "signup" ? 6 : undefined}
               disabled={submitting}
-              className="h-[46px] w-full px-3.5 rounded-[10px] border border-input bg-background text-[15px] text-foreground placeholder:text-muted-foreground/50 outline-none transition-all duration-150 focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="h-[46px] w-full px-3.5 rounded-[10px] border border-input bg-background text-[15px] text-foreground placeholder:text-muted-foreground/50 outline-none transition-all duration-150 focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:opacity-50"
             />
           </div>
 
-          {/* Submit */}
           <button
             type="submit"
             disabled={!isReady}
             className="mt-2 h-[46px] w-full rounded-[10px] bg-foreground text-background text-[15px] font-medium flex items-center justify-center gap-2 transition-opacity duration-150 hover:opacity-80 disabled:opacity-30 disabled:cursor-not-allowed"
           >
-            {submitting ? (
-              <>
-                <div role="status" aria-label="Loading...">
-                  <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24">
-                    {[...Array(8)].map((_, i) => (
-                      <line
-                        key={i}
-                        x1="12"
-                        y1="3"
-                        x2="12"
-                        y2="6"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        className="opacity-30"
-                        transform={`rotate(${i * 45} 12 12)`}
-                      />
-                    ))}
-                  </svg>
-                </div>
-                Signing in…
-              </>
-            ) : (
-              "Sign in"
-            )}
+            {submitting
+              ? mode === "signin" ? "Signing in…" : "Creating account…"
+              : mode === "signin" ? "Sign in" : "Create account"}
           </button>
         </form>
 
-        {/* Footer */}
         <div className="mt-8 pt-6 border-t border-border text-center">
           <p className="text-[14px] text-muted-foreground">
-            Don't have an account?{" "}
+            {mode === "signin" ? "Don't have an account? " : "Already have an account? "}
             <button
               type="button"
+              onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
               className="text-primary font-medium hover:underline"
             >
-              Request access
+              {mode === "signin" ? "Sign up" : "Sign in"}
             </button>
           </p>
         </div>
-
       </div>
     </div>
   );
