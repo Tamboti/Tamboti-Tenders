@@ -15,7 +15,7 @@ const corsHeaders = {
 const CONFIG = {
   authUrl: "https://nest.go.tz/gateway/nest-uaa",
   appUrl: "https://nest.go.tz/gateway/nest-app",
-  basicToken: "Basic bmVzdDoxa3p3anoybnplZ3QzbmVzdEBwcHJhLmdvLnR6YTFxQEJtTTBPbw==",
+  basicToken: Deno.env.get("NEST_BASIC_TOKEN") ?? "",
   username: Deno.env.get("NEST_USERNAME") ?? "",
   password: Deno.env.get("NEST_PASSWORD") ?? "",
   pageSize: 50,
