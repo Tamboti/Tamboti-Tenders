@@ -122,7 +122,7 @@ async function getNestToken(): Promise<string> {
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
       "Accept": "application/json",
-      "Authorization": Deno.env.get("NEST_BASIC_TOKEN") ?? "",
+      "Authorization": "Basic bmVzdDoxa3p3anoybnplZ3QzbmVzdEBwcHJhLmdvLnR6YTFxQEJtTTBPbw==",
     },
     body: body.toString(),
   });
