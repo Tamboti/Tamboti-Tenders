@@ -19,6 +19,8 @@ import { Button } from "@/components/ui/button";
 import { Tender } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { formatDate, daysUntil } from "@/lib/format";
+import { displayTitle } from "@/lib/tenderLanguage";
+import { SourceLanguageBadge, TranslationStatusBadge } from "./LanguageBadges";
 import { CountryCell } from "./CountryCell";
 
 const MotionRow = motion(TableRow);
@@ -133,7 +135,7 @@ export const TenderTable = ({
   onEdit,
   onDelete,
 }: TenderTableProps) => {
-  const cols = 6 ;
+  const cols = 5;
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-card">
       {/* Mobile card list */}
@@ -189,7 +191,7 @@ export const TenderTable = ({
                       </div>
                     )}
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 pt-1">
-                      <CountryCell country={t.country} compact />
+                      <CountryCell country={t.country} countryIso2={t.country_iso2} compact />
                       {t.category && (
                         <span className="text-[11.5px] text-muted-foreground/80 truncate max-w-[10rem]">
                           {t.category}
@@ -248,8 +250,6 @@ export const TenderTable = ({
             <HeaderCell className="w-[10rem]">Country</HeaderCell>
             <HeaderCell className="w-[8rem]">Category</HeaderCell>
             <HeaderCell className="w-[8rem]">Deadline</HeaderCell>
-            <HeaderCell className="w-[9rem]">Status</HeaderCell>
-           
           </TableRow>
         </TableHeader>
 
@@ -308,8 +308,12 @@ export const TenderTable = ({
 
                   <TableCell className="max-w-[35rem] px-4 py-3.5 align-middle">
                     <div className="min-w-0 space-y-0.5">
-                      <div className="text-[13.5px] font-medium leading-snug text-foreground line-clamp-1">
-                        {t.title}
+                      <div className="flex items-center gap-1.5">
+                        <div className="text-[13.5px] font-medium leading-snug text-foreground line-clamp-1">
+                          {displayTitle(t)}
+                        </div>
+                        <SourceLanguageBadge sourceLanguage={t.source_language} className="shrink-0" />
+                        <TranslationStatusBadge status={t.translation_status} className="shrink-0" />
                       </div>
                       {(t.procuring_entity || t.reference_number) && (
                         <div className="flex items-center gap-2 text-[11.5px] text-muted-foreground">
@@ -337,7 +341,7 @@ export const TenderTable = ({
                   </TableCell>
 
                   <TableCell className="px-4 py-3.5 align-middle">
-                    <CountryCell country={t.country} />
+                    <CountryCell country={t.country} countryIso2={t.country_iso2} />
                   </TableCell>
 
                   <TableCell className="px-4 py-3.5 align-middle">
@@ -353,12 +357,6 @@ export const TenderTable = ({
                   <TableCell className="whitespace-nowrap px-4 py-3.5 align-middle">
                     <DeadlineCell deadline={t.deadline} />
                   </TableCell>
-
-                  <TableCell className="px-4 py-3.5 align-middle">
-                    <StatusDot status={t.workflow_status} />
-                  </TableCell>
-
-
                 </MotionRow>
               );
             })

@@ -14,6 +14,10 @@ export function handleDbError(error: unknown, fallback = "Something went wrong. 
       return "Related record is missing.";
     case "23514":
       return "Some values are invalid.";
+    case "22023":
+      return "That's not a valid status.";
+    case "P0002":
+      return "This tender no longer exists.";
     case "42501":
     case "PGRST301":
       return "You don't have permission to do that.";

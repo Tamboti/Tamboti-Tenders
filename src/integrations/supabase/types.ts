@@ -143,6 +143,30 @@ export type Database = {
         }
         Relationships: []
       }
+      country_reference: {
+        Row: {
+          canonical_name: string
+          continent: string
+          iso2: string
+          name_variant: string
+          subregion: string | null
+        }
+        Insert: {
+          canonical_name: string
+          continent: string
+          iso2: string
+          name_variant: string
+          subregion?: string | null
+        }
+        Update: {
+          canonical_name?: string
+          continent?: string
+          iso2?: string
+          name_variant?: string
+          subregion?: string | null
+        }
+        Relationships: []
+      }
       scrape_logs: {
         Row: {
           duration_ms: number | null
@@ -234,15 +258,50 @@ export type Database = {
           },
         ]
       }
+      tender_translations: {
+        Row: {
+          lang: string
+          summary: string | null
+          tender_id: string
+          title: string | null
+          translated_at: string
+        }
+        Insert: {
+          lang: string
+          summary?: string | null
+          tender_id: string
+          title?: string | null
+          translated_at?: string
+        }
+        Update: {
+          lang?: string
+          summary?: string | null
+          tender_id?: string
+          title?: string | null
+          translated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tender_translations_tender_id_fkey"
+            columns: ["tender_id"]
+            isOneToOne: false
+            referencedRelation: "tenders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenders: {
         Row: {
           category: string | null
           contact_information: string | null
+          continent: string | null
           contract_duration_days: number | null
           country: string | null
+          country_iso2: string | null
           created_at: string | null
           deadline: string | null
           description: string | null
+          description_en: string | null
           enriched_at: string | null
           enrichment_attempts: number
           enrichment_error: string | null
@@ -252,6 +311,7 @@ export type Database = {
           location_district: string | null
           location_region: string | null
           lot_count: number | null
+          notice_pdf_url: string | null
           original_currency: string | null
           participation_fee: number | null
           procurement_type: string | null
@@ -260,24 +320,34 @@ export type Database = {
           raw_data: Json | null
           reference_number: string | null
           scraped_at: string | null
+          search_vector: unknown
           source: string
           source_id: string
+          source_language: string | null
           source_url: string | null
+          subregion: string | null
           summary_cs: string | null
           summary_en: string | null
           title: string
           title_cs: string | null
+          title_en: string | null
+          translated_at: string | null
+          translation_error: string | null
+          translation_status: string
           updated_at: string | null
           workflow_status: string
         }
         Insert: {
           category?: string | null
           contact_information?: string | null
+          continent?: string | null
           contract_duration_days?: number | null
           country?: string | null
+          country_iso2?: string | null
           created_at?: string | null
           deadline?: string | null
           description?: string | null
+          description_en?: string | null
           enriched_at?: string | null
           enrichment_attempts?: number
           enrichment_error?: string | null
@@ -287,6 +357,7 @@ export type Database = {
           location_district?: string | null
           location_region?: string | null
           lot_count?: number | null
+          notice_pdf_url?: string | null
           original_currency?: string | null
           participation_fee?: number | null
           procurement_type?: string | null
@@ -295,24 +366,34 @@ export type Database = {
           raw_data?: Json | null
           reference_number?: string | null
           scraped_at?: string | null
+          search_vector?: unknown
           source: string
           source_id: string
+          source_language?: string | null
           source_url?: string | null
+          subregion?: string | null
           summary_cs?: string | null
           summary_en?: string | null
           title: string
           title_cs?: string | null
+          title_en?: string | null
+          translated_at?: string | null
+          translation_error?: string | null
+          translation_status?: string
           updated_at?: string | null
           workflow_status?: string
         }
         Update: {
           category?: string | null
           contact_information?: string | null
+          continent?: string | null
           contract_duration_days?: number | null
           country?: string | null
+          country_iso2?: string | null
           created_at?: string | null
           deadline?: string | null
           description?: string | null
+          description_en?: string | null
           enriched_at?: string | null
           enrichment_attempts?: number
           enrichment_error?: string | null
@@ -322,6 +403,7 @@ export type Database = {
           location_district?: string | null
           location_region?: string | null
           lot_count?: number | null
+          notice_pdf_url?: string | null
           original_currency?: string | null
           participation_fee?: number | null
           procurement_type?: string | null
@@ -330,13 +412,20 @@ export type Database = {
           raw_data?: Json | null
           reference_number?: string | null
           scraped_at?: string | null
+          search_vector?: unknown
           source?: string
           source_id?: string
+          source_language?: string | null
           source_url?: string | null
+          subregion?: string | null
           summary_cs?: string | null
           summary_en?: string | null
           title?: string
           title_cs?: string | null
+          title_en?: string | null
+          translated_at?: string | null
+          translation_error?: string | null
+          translation_status?: string
           updated_at?: string | null
           workflow_status?: string
         }
@@ -369,6 +458,13 @@ export type Database = {
     }
     Functions: {
       is_admin: { Args: { _uid: string }; Returns: boolean }
+      set_workflow_status: {
+        Args: { _status: string; _tender_id: string }
+        Returns: undefined
+      }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
+      unaccent: { Args: { "": string }; Returns: string }
     }
     Enums: {
       [_ in never]: never

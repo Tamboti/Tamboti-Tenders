@@ -203,6 +203,14 @@ const TenderDetailPage = () => {
     setLoading(false);
   };
 
+  // Re-fetch without toggling `loading`, so in-place edits (status, bookmark)
+  // update the tender data without flashing the page back to the skeleton.
+  const refresh = async () => {
+    if (!id) return;
+    const { data } = await supabase.from("tenders").select("*").eq("id", id).maybeSingle();
+    setTender(data as Tender | null);
+  };
+
   useEffect(() => { load(); }, [id]);
 
   return (
@@ -224,7 +232,7 @@ const TenderDetailPage = () => {
       ) : !tender ? (
         <NotFound />
       ) : (
-        <TenderDetail tender={tender} onChanged={load} />
+        <TenderDetail tender={tender} onChanged={refresh} />
       )}
 
     </PageContainer>

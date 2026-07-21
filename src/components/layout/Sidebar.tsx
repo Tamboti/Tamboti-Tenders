@@ -5,7 +5,8 @@ import { PanelLeft, LogOut } from "lucide-react";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
-import { NAV_SECTIONS } from "./nav.ts";
+import { useUserRole } from "@/hooks/use-user-role";
+import { visibleNavSections } from "./nav.ts";
 import { AvatarInitial } from "@/components/AvatarInitial";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -30,8 +31,10 @@ const MoonIcon = ({ className }: { className?: string }) => (
 
 export const Sidebar = ({ mobile = false, onNavigate }: SidebarProps) => {
   const [collapsed, setCollapsed] = useState(false);
-  const { user, role, signOut } = useAuth();
+  const { user, signOut } = useAuth();
+  const { role, isAdmin } = useUserRole();
   const { resolvedTheme, setTheme } = useTheme();
+  const navSections = visibleNavSections(isAdmin);
 
   const isDark = resolvedTheme === "dark";
   const compact = mobile ? false : collapsed;
@@ -99,7 +102,7 @@ export const Sidebar = ({ mobile = false, onNavigate }: SidebarProps) => {
         </div>
 
         {/* SECTIONS */}
-        {NAV_SECTIONS.map((section, idx) => (
+        {navSections.map((section, idx) => (
           <div
             key={idx}
             className={cn("space-y-1", compact && "space-y-2")}

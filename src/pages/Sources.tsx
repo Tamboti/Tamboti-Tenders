@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { toast } from "@/components/ui/sonner";
-import { Loader2, Play, Globe, CheckCircle2, XCircle, Clock3 } from "lucide-react";
+import { Loader2, Play, Globe, CheckCircle2, XCircle, Clock3, AlertTriangle } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { handleDbError } from "@/lib/dbError";
 
@@ -51,6 +51,7 @@ export default function Sources() {
   const [logs, setLogs] = useState<ScrapeLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState<Record<string, boolean>>({});
+  const [unmappedCountries, setUnmappedCountries] = useState<string[]>([]);
 
   const loadLogs = async () => {
     const { data, error } = await supabase
@@ -67,6 +68,25 @@ export default function Sources() {
   };
 
   useEffect(() => { loadLogs(); }, []);
+
+  // Early warning that a scraper started emitting a country spelling that
+  // isn't in country_reference yet — those tenders still show up in the
+  // main list (continent null is treated as in-scope), but need the new
+  // spelling added to country_reference so they get classified correctly.
+  useEffect(() => {
+    supabase
+      .from("tenders")
+      .select("country")
+      .is("continent", null)
+      .not("country", "is", null)
+      .then(({ data, error }) => {
+        if (error) return;
+        const distinct = Array.from(
+          new Set((data ?? []).map((d) => d.country).filter(Boolean) as string[])
+        ).sort();
+        setUnmappedCountries(distinct);
+      });
+  }, []);
 
   const runScraper = async (s: Scraper) => {
     setRunning((r) => ({ ...r, [s.fn]: true }));
@@ -146,9 +166,36 @@ export default function Sources() {
         </Button>
          */}
       </div>
-     
 
-      {/* ── Scraper cards ── 
+      {/* ── Unmapped countries (data quality) ── */}
+      {unmappedCountries.length > 0 && (
+        <Card className="border-warning/30 bg-warning/5 p-4 sm:p-5">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
+            <div className="space-y-2 min-w-0">
+              <div>
+                <h2 className="text-sm font-medium text-foreground">Unmapped countries</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  These country spellings appear on tenders but aren't in country_reference yet,
+                  so they can't be classified by continent/region. Add them to country_reference.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {unmappedCountries.map((c) => (
+                  <span
+                    key={c}
+                    className="inline-flex items-center rounded border border-warning/30 bg-background px-1.5 py-0.5 text-[11px] font-mono text-foreground"
+                  >
+                    {c}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {/* ── Scraper cards ──
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {SCRAPERS.map((s) => {
           const last = logs.find((l) => l.source?.toLowerCase().includes(s.source));

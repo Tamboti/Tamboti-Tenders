@@ -10,7 +10,8 @@ import {
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
-import { NAV_SECTIONS } from "./nav.ts";
+import { useUserRole } from "@/hooks/use-user-role";
+import { visibleNavSections } from "./nav.ts";
 import { AvatarInitial } from "@/components/AvatarInitial";
 import { Switch } from "../ui/switch.tsx";
 import { Label } from "../ui/label.tsx";
@@ -65,14 +66,16 @@ const ThemeToggle = ({ isCompact, isDark, setTheme }: { isCompact?: boolean, isD
 
 /* ── Mobile drawer nav content ───────────────────────────────────── */
 const MobileNav = ({ onNavigate }: { onNavigate: () => void }) => {
-  const { user, role, signOut } = useAuth();
+  const { user, signOut } = useAuth();
+  const { role, isAdmin } = useUserRole();
   const { resolvedTheme, setTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
+  const navSections = visibleNavSections(isAdmin);
 
   return (
     <div className="flex flex-col h-full">
       <nav className="flex-1 overflow-y-auto px-1 py-2 space-y-5">
-        {NAV_SECTIONS.map((section, idx) => (
+        {navSections.map((section, idx) => (
           <div key={idx} className="space-y-0.5">
             {section.heading && (
               <p className="px-2 pt-1 pb-1 text-xs font-medium text-muted-foreground">
@@ -139,9 +142,11 @@ const getRouteLabel = (pathname: string) => {
 /* ── TopBar ──────────────────────────────────────────────────────── */
 export const TopBar = () => {
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const { user, role, signOut } = useAuth();
+  const { user, signOut } = useAuth();
+  const { role, isAdmin } = useUserRole();
   const location = useLocation();
   const title = getRouteLabel(location.pathname);
+  const navSections = visibleNavSections(isAdmin);
 
   return (
     <>
@@ -167,7 +172,7 @@ export const TopBar = () => {
 
           {/* Center — quick links (desktop) */}
           <nav className="hidden md:flex items-center gap-1.5">
-            {NAV_SECTIONS.flatMap((s) => s.items).map((item) => (
+            {navSections.flatMap((s) => s.items).map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}

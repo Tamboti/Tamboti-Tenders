@@ -1,19 +1,22 @@
 import { Globe } from "@/components/icons";
 import { cn } from "@/lib/utils";
-import { getCountryIso2, getDisplayCountry } from "@/lib/countries";
+import { resolveCountryDisplay } from "@/lib/countries";
+import { useCountryReference } from "@/hooks/use-country-reference";
 
 export const CountryCell = ({
   country,
+  countryIso2,
   compact = false,
 }: {
   country: string | null | undefined;
+  countryIso2?: string | null;
   compact?: boolean;
 }) => {
-  const display = getDisplayCountry(country);
-  if (!display) {
+  const { byIso2 } = useCountryReference();
+  const { name, iso2 } = resolveCountryDisplay(country, countryIso2, byIso2);
+  if (!name) {
     return <span className="text-sm text-muted-foreground/40">—</span>;
   }
-  const iso2 = getCountryIso2(display);
   return (
     <span
       className={cn(
@@ -26,7 +29,7 @@ export const CountryCell = ({
       ) : (
         <Globe className="h-3.5 w-3.5 shrink-0 text-muted-foreground/70" />
       )}
-      <span className="truncate max-w-[100px] block">{display}</span>
+      <span className="truncate max-w-[100px] block">{name}</span>
     </span>
   );
 };

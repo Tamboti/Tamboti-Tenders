@@ -7,6 +7,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { AppLayout } from "@/components/layout/AppLayout";
 import RequireAuth from "@/components/auth/RequireAuth";
+import { RequireRole } from "@/components/auth/RequireRole";
 import Tenders from "./pages/Tenders";
 import TenderDetailPage from "./pages/TenderDetailPage";
 import Alerts from "./pages/Alerts";
@@ -32,7 +33,14 @@ const App = () => (
                   <Route path="/" element={<Tenders />} />
                   <Route path="/tender/:id" element={<TenderDetailPage />} />
                   <Route path="/alerts" element={<Alerts />} />
-                  <Route path="/sources" element={<Sources />} />
+                  <Route
+                    path="/sources"
+                    element={
+                      <RequireRole role="admin">
+                        <Sources />
+                      </RequireRole>
+                    }
+                  />
                   <Route path="/bookmarks" element={<Bookmarks />} />
                 </Route>
               </Route>

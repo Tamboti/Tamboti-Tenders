@@ -34,10 +34,30 @@ export const EditTenderDialog = ({
   onSaved: () => void;
 }) => {
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [form, setForm] = useState<Partial<Tender>>(tender ?? {});
 
+  // The list row that opens this dialog is a trimmed projection (no
+  // `description`) — fetch the full row so the form isn't missing fields.
   useEffect(() => {
-    setForm(tender ?? {});
+    if (!tender) return;
+    setForm(tender);
+    setLoading(true);
+    let cancelled = false;
+    supabase
+      .from("tenders")
+      .select("*")
+      .eq("id", tender.id)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        setLoading(false);
+        if (error) return toast.error(handleDbError(error));
+        if (data) setForm(data as Partial<Tender>);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [tender]);
 
   if (!tender) return null;
@@ -46,6 +66,10 @@ export const EditTenderDialog = ({
 
   const save = async () => {
     setSaving(true);
+
+    // workflow_status is not writable via a plain update() for non-admins
+    // (and, going forward, may not stay writable for admins either) — it
+    // only ever goes through set_workflow_status().
     const payload = {
       title: form.title,
       procuring_entity: form.procuring_entity,
@@ -53,7 +77,6 @@ export const EditTenderDialog = ({
       category: form.category,
       procurement_type: form.procurement_type,
       deadline: form.deadline || null,
-      workflow_status: form.workflow_status,
       estimated_value_usd: form.estimated_value_usd,
       original_currency: form.original_currency,
       description: form.description,
@@ -62,8 +85,24 @@ export const EditTenderDialog = ({
       source_url: form.source_url,
     };
     const { error } = await supabase.from("tenders").update(payload).eq("id", tender.id);
+    if (error) {
+      setSaving(false);
+      return toast.error(handleDbError(error));
+    }
+
+    if (form.workflow_status && form.workflow_status !== tender.workflow_status) {
+      const { error: statusError } = await supabase.rpc("set_workflow_status", {
+        _tender_id: tender.id,
+        _status: form.workflow_status,
+      });
+      if (statusError) {
+        setSaving(false);
+        toast.error(handleDbError(statusError));
+        return;
+      }
+    }
+
     setSaving(false);
-    if (error) return toast.error(handleDbError(error));
     toast.success("Tender updated");
     onSaved();
     onOpenChange(false);
@@ -176,6 +215,8 @@ export const EditTenderDialog = ({
               rows={4}
               value={form.description ?? ""}
               onChange={(e) => update("description", e.target.value)}
+              placeholder={loading ? "Loading…" : undefined}
+              disabled={loading}
             />
           </div>
         </div>
@@ -183,7 +224,7 @@ export const EditTenderDialog = ({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={save} disabled={saving}>
+          <Button onClick={save} disabled={saving || loading}>
             {saving ? "Saving…" : "Save"}
           </Button>
         </DialogFooter>

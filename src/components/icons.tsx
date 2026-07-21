@@ -19,6 +19,7 @@ import {
   Globe as IGlobe,
   GraphUp as IGraphUp,
   Label as ILabel,
+  Lock as ILock,
   LogOut as ILogOut,
   MapPin as IMapPin,
   Menu as IMenu,
@@ -36,6 +37,7 @@ import {
   SidebarCollapse as ISidebarCollapse,
   Sparks as ISparks,
   Trash as ITrash,
+  WarningTriangle as IWarningTriangle,
   Xmark as IXmark,
   XmarkCircle as IXmarkCircle,
 } from "iconoir-react";
@@ -91,4 +93,6 @@ export const Tag = withDefaultStroke(ILabel);
 export const DollarSign = withDefaultStroke(IDollar);
 export const Layers = withDefaultStroke(ICube);
 export const Sparkles = withDefaultStroke(ISparks);
+export const Lock = withDefaultStroke(ILock);
+export const AlertTriangle = withDefaultStroke(IWarningTriangle);
 

@@ -79,3 +79,24 @@ export const getDisplayCountry = (country: string | null | undefined): string =>
   const candidate = slashParts.length > 1 ? slashParts[slashParts.length - 1] : normalized;
   return candidate.trim();
 };
+
+/**
+ * Resolves a tender's display name + flag code. Prefers the backend-provided
+ * country_iso2 (joined against country_reference for the canonical name,
+ * e.g. "Cote d'Ivoire" instead of "COTE D'IVOIRE"); falls back to guessing
+ * from the raw `country` string when country_iso2 is null (unmapped spelling).
+ */
+export const resolveCountryDisplay = (
+  country: string | null | undefined,
+  countryIso2: string | null | undefined,
+  byIso2?: Map<string, { canonical_name: string }>
+): { name: string; iso2: string | null } => {
+  if (countryIso2) {
+    const ref = byIso2?.get(countryIso2.toUpperCase());
+    return {
+      name: ref?.canonical_name ?? (getDisplayCountry(country) || countryIso2),
+      iso2: countryIso2.toLowerCase(),
+    };
+  }
+  return { name: getDisplayCountry(country), iso2: getCountryIso2(country) };
+};

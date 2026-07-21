@@ -5,6 +5,7 @@ export type NavItem = {
   to: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
+  adminOnly?: boolean;
 };
 
 export type NavSection = {
@@ -13,7 +14,7 @@ export type NavSection = {
 };
 
 export const NAV_SECTIONS: NavSection[] = [
-  { heading: "Scrapers", items: [{ to: "/sources", label: "Sources", icon: Globe }] },
+  { heading: "Scrapers", items: [{ to: "/sources", label: "Sources", icon: Globe, adminOnly: true }] },
   {
     heading: "Observe",
     items: [
@@ -23,4 +24,11 @@ export const NAV_SECTIONS: NavSection[] = [
   },
   { heading: "Engage", items: [{ to: "/alerts", label: "Alerts", icon: Bell }] },
 ];
+
+// Cosmetic only — RLS is what actually enforces admin-only access.
+export const visibleNavSections = (isAdmin: boolean): NavSection[] =>
+  NAV_SECTIONS.map((section) => ({
+    ...section,
+    items: section.items.filter((item) => !item.adminOnly || isAdmin),
+  })).filter((section) => section.items.length > 0);
 
