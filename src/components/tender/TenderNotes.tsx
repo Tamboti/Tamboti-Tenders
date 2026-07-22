@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { getAnonUserId } from "@/lib/anonUser";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { formatDateTime } from "@/lib/format";
@@ -210,12 +209,16 @@ export const TenderNotes = ({ tenderId }: { tenderId: string }) => {
 
   const add = async () => {
     if (!text.trim()) return;
+    if (!user) {
+      toast.error("Sign in to add a note");
+      return;
+    }
 
     setSubmitting(true);
 
     const { error } = await supabase.from("tender_notes").insert({
       tender_id: tenderId,
-      user_id: user?.id ?? getAnonUserId(),
+      user_id: user.id,
       note: text.trim(),
     });
 

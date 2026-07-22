@@ -4,10 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useCountryReference } from "@/hooks/use-country-reference";
-import { resolveCountryDisplay } from "@/lib/countries";
 import { Tender, WORKFLOW_STATUSES } from "@/lib/types";
-import { displayTitle, TENDER_LIST_COLUMNS } from "@/lib/tenderLanguage";
-import { SourceLanguageBadge, TranslationStatusBadge } from "@/components/tender/LanguageBadges";
+import { TENDER_LIST_COLUMNS } from "@/lib/tenderLanguage";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -44,8 +42,9 @@ import {
 import { EditTenderDialog } from "@/components/tender/EditTenderDialog";
 import { TenderQuickView } from "@/components/Tenderquickview";
 import { TenderTable } from "@/components/tender/TenderTable";
+import { TenderCard, DeadlinePill, CountryChip } from "@/components/tender/TenderCard";
 import { getAnonUserId } from "@/lib/anonUser";
-import { formatDate, daysUntil } from "@/lib/format";
+import { formatDate } from "@/lib/format";
 import {
   Search,
   Bookmark,
@@ -57,7 +56,6 @@ import {
   Pencil,
   Trash2,
   TrendingUp,
-  Clock,
   Globe,
   SlidersHorizontal,
   X,
@@ -82,6 +80,8 @@ import {
 } from "@/components/ui/table";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { PageContainer } from "@/components/layout/PageContainer";
+import { Seo } from "@/components/seo/Seo";
+import { trackEvent } from "@/lib/analytics";
 
 const PAGE_SIZE = 100;
 type DeadlineScope = "active" | "past" | "all";
@@ -94,95 +94,6 @@ const getTodayIsoDate = () => {
   const month = String(now.getMonth() + 1).padStart(2, "0");
   const day = String(now.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
-};
-
-const getStatusTone = (status: string) => {
-  const value = status.toLowerCase();
-
-  if (value.includes("awarded") || value.includes("won") || value.includes("completed")) {
-    return "text-emerald-700 dark:text-emerald-400";
-  }
-
-  if (value.includes("review") || value.includes("shortlist") || value.includes("progress")) {
-    return "text-sky-700 dark:text-sky-300";
-  }
-
-  if (value.includes("draft") || value.includes("new") || value.includes("open")) {
-    return "text-violet-700 dark:text-violet-300";
-  }
-
-  if (value.includes("submitted") || value.includes("pending")) {
-    return "text-amber-700 dark:text-amber-300";
-  }
-
-  if (value.includes("cancel") || value.includes("lost") || value.includes("closed")) {
-    return "text-rose-700 dark:text-rose-300";
-  }
-
-  return "text-muted-foreground";
-};
-
-const TenderStatusBadge = ({ status }: { status: string }) => (
-  <span
-    className={cn(
-      "inline-flex max-w-full items-center gap-1.5 rounded-full  px-2.5 py-1 text-[11px] font-semibold leading-none",
-      getStatusTone(status)
-    )}
-  >
-    <span className="h-1.5 w-1.5 rounded-full bg-current opacity-70" />
-    <span className="truncate">{status}</span>
-  </span>
-);
-
-const CountryChip = ({
-  country,
-  countryIso2,
-  compact = false,
-}: {
-  country: string | null | undefined;
-  countryIso2?: string | null;
-  compact?: boolean;
-}) => {
-  const { byIso2 } = useCountryReference();
-  const { name, iso2 } = resolveCountryDisplay(country, countryIso2, byIso2);
-  if (!name) {
-    return <span className="text-sm text-muted-foreground/35">—</span>;
-  }
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1.5 rounded-full   text-muted-foreground",
-        compact ? "px-2 py-0.5 text-[11px]" : "px-2.5 py-1 text-[12px]"
-      )}
-    >
-      {iso2 ? (
-        <span className={cn("fi rounded-[2px] shadow-sm", `fi-${iso2}`)} aria-hidden="true" />
-      ) : (
-        <Globe className="h-3 w-3 shrink-0 opacity-70" />
-      )}
-      <span className="line-clamp-1">{name}</span>
-    </span>
-  );
-};
-
-/* ── Deadline pill ───────────────────────────────────────────────── */
-const DeadlinePill = ({ deadline }: { deadline: string | null }) => {
-  const d = daysUntil(deadline);
-  if (d == null) return <span className="text-muted-foreground text-xs">—</span>;
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium tabular-nums",
-        d < 0 && "bg-destructive/10 text-destructive",
-        d === 0 && "bg-destructive/20 text-destructive font-semibold",
-        d >= 1 && d <= 7 && "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
-        d > 7 && "bg-muted text-muted-foreground"
-      )}
-    >
-      <Clock className="h-2.5 w-2.5 shrink-0" />
-      {d < 0 ? `${Math.abs(d)}d ago` : d === 0 ? "Today" : `${d}d`}
-    </span>
-  );
 };
 
 const Stat = ({
@@ -396,83 +307,6 @@ const SkeletonCards = () => (
     ))}
   </div>
 );
-
-/* ── Mobile tender card ──────────────────────────────────────────── */
-const TenderCard = ({
-  t,
-  isBookmarked,
-  isAdmin,
-  onBookmark,
-  onEdit,
-  onDelete,
-  onClick,
-  idx,
-}: {
-  t: Tender;
-  isBookmarked: boolean;
-  isAdmin: boolean;
-  onBookmark: (id: string, e: React.MouseEvent) => void;
-  onEdit: (t: Tender) => void;
-  onDelete: (t: Tender) => void;
-  onClick: () => void;
-  idx: number;
-}) => {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 6 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.18, delay: Math.min(idx * 0.03, 0.25) }}
-      className="relative rounded-2xl border border-border/70 bg-card p-4 shadow-sm cursor-pointer active:bg-muted/30 active:scale-[0.99] transition-all"
-      onClick={onClick}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); }
-      }}
-    >
-      <span className="absolute left-0 top-3 bottom-3 w-0.5 rounded-full bg-primary/0 transition-colors" />
-
-      <div className="min-w-0 space-y-1.5">
-        <p className="text-[13px] font-semibold leading-snug text-foreground line-clamp-2">
-          {displayTitle(t)}
-        </p>
-
-        {(t.procuring_entity || t.reference_number) && (
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground">
-            {t.procuring_entity && (
-              <span className="line-clamp-1">{t.procuring_entity}</span>
-            )}
-            {t.reference_number && (
-              <span className="font-mono text-[10px] tabular-nums text-muted-foreground/60">
-                {t.reference_number}
-              </span>
-            )}
-          </div>
-        )}
-
-        <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-          <DeadlinePill deadline={t.deadline} />
-          {t.country && (
-            <CountryChip country={t.country} countryIso2={t.country_iso2} compact />
-          )}
-          {t.category && (
-            <span className="inline-flex max-w-[9rem] rounded-full border border-border/70 bg-muted/35 px-2 py-0.5 text-[11px] font-semibold leading-none text-muted-foreground">
-              <span className="truncate">{t.category}</span>
-            </span>
-          )}
-          <SourceLanguageBadge sourceLanguage={t.source_language} />
-          <TranslationStatusBadge status={t.translation_status} />
-        </div>
-
-        {t.summary_en && (
-          <p className="text-[11px] text-muted-foreground/75 line-clamp-2 mt-1">
-            {t.summary_en}
-          </p>
-        )}
-      </div>
-    </motion.div>
-  );
-};
 
 /* ── Main page ───────────────────────────────────────────────────── */
 const Tenders = () => {
@@ -822,6 +656,10 @@ const Tenders = () => {
 
   const toggleBookmark = async (tenderId: string, e?: React.MouseEvent) => {
     e?.stopPropagation();
+    if (!user) {
+      toast.error("Sign in to save tenders");
+      return;
+    }
     const has = bookmarks.has(tenderId);
     if (has) {
       const { error } = await supabase
@@ -834,6 +672,7 @@ const Tenders = () => {
         return n;
       });
       queryClient.invalidateQueries({ queryKey: ["bookmarks-page", uid] });
+      trackEvent("bookmark_toggle", { action: "remove", tender_id: tenderId });
     } else {
       const { error } = await supabase
         .from("tender_bookmarks").insert({ user_id: uid, tender_id: tenderId });
@@ -844,6 +683,7 @@ const Tenders = () => {
         return n;
       });
       queryClient.invalidateQueries({ queryKey: ["bookmarks-page", uid] });
+      trackEvent("bookmark_toggle", { action: "add", tender_id: tenderId });
     }
   };
 
@@ -955,6 +795,11 @@ const Tenders = () => {
 
   return (
     <div ref={pageRef} className="w-full min-h-0">
+      <Seo
+        title="Browse Tenders"
+        description="Search and filter procurement tenders across Africa by country, category, and deadline."
+        url={typeof window !== "undefined" ? window.location.origin + "/tenders" : undefined}
+      />
       <PageContainer className="space-y-6 sm:space-y-8">
 
         {/* ── Page header ── */}
@@ -980,7 +825,7 @@ const Tenders = () => {
         {/* ── Filters ── */}
         <div className="sticky top-0 z-30 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-3 bg-background/85 backdrop-blur-md">
           {/* Desktop */}
-          <div className="hidden md:flex items-stretch divide-x divide-border/60 rounded-2xl border border-border/70 bg-card shadow-sm overflow-x-auto scrollbar-none">
+          <div className="hidden md:flex items-stretch divide-x divide-border/60 rounded-lg border border-border/70 bg-card shadow-sm overflow-x-auto scrollbar-none">
             <div className="flex flex-1 min-w-[140px] items-center gap-2.5 px-3.5">
               <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
                 <Search className="h-3.5 w-3.5" />
@@ -1161,11 +1006,6 @@ const Tenders = () => {
                   key={t.id}
                   t={t}
                   idx={idx}
-                  isBookmarked={bookmarks.has(t.id)}
-                  isAdmin={isAdmin}
-                  onBookmark={toggleBookmark}
-                  onEdit={setEditing}
-                  onDelete={setDeleting}
                   onClick={() => openQuickView(t)}
                 />
               ))}

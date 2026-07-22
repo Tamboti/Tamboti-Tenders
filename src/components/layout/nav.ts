@@ -1,5 +1,5 @@
 import type React from "react";
-import { Globe, FileSearch, Bell, Bookmark } from "lucide-react";
+import { Globe, Bell, Bookmark, Pencil } from "lucide-react";
 
 export type NavItem = {
   to: string;
@@ -17,12 +17,10 @@ export const NAV_SECTIONS: NavSection[] = [
   { heading: "Scrapers", items: [{ to: "/sources", label: "Sources", icon: Globe, adminOnly: true }] },
   {
     heading: "Observe",
-    items: [
-      { to: "/", label: "Tenders", icon: FileSearch },
-      { to: "/bookmarks", label: "Bookmarks", icon: Bookmark },
-    ],
+    items: [{ to: "/bookmarks", label: "Bookmarks", icon: Bookmark }],
   },
   { heading: "Engage", items: [{ to: "/alerts", label: "Alerts", icon: Bell }] },
+  { heading: "Content", items: [{ to: "/admin/posts", label: "Blog", icon: Pencil, adminOnly: true }] },
 ];
 
 // Cosmetic only — RLS is what actually enforces admin-only access.

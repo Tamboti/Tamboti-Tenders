@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { handleDbError } from "@/lib/dbError";
+import { trackEvent } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { MailOpen } from "iconoir-react";
@@ -684,6 +685,7 @@ const Alerts = () => {
       if (error) return toast.error(handleDbError(error));
       setAlerts((prev) => [data as AlertPreference, ...prev]);
       toast.success("Alert created");
+      trackEvent("alert_created");
     }
     closeModal();
   };

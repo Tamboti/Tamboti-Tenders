@@ -34,6 +34,7 @@ import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { User } from "iconoir-react";
+import { trackEvent } from "@/lib/analytics";
 
 /* ─── tiny helpers ──────────────────────────────────────────────── */
 
@@ -247,6 +248,7 @@ export const TenderDetail = ({
       if (error) return toast.error(handleDbError(error));
       setIsBookmarked(false);
       toast.success("Removed from bookmarks");
+      trackEvent("bookmark_toggle", { action: "remove", tender_id: tender.id });
     } else {
       const { error } = await supabase
         .from("tender_bookmarks")
@@ -255,6 +257,7 @@ export const TenderDetail = ({
       if (error) return toast.error(handleDbError(error));
       setIsBookmarked(true);
       toast.success("Saved to bookmarks");
+      trackEvent("bookmark_toggle", { action: "add", tender_id: tender.id });
     }
     onChanged?.();
   };

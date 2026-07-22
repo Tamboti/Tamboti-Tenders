@@ -6,6 +6,9 @@ import { TenderDetail } from "@/components/tender/TenderDetail";
 import { ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PageContainer } from "@/components/layout/PageContainer";
+import { Seo } from "@/components/seo/Seo";
+import { displayTitle } from "@/lib/tenderLanguage";
+import { trackEvent } from "@/lib/analytics";
 
 /* ─── Shimmer primitive ──────────────────────────────────────────── */
 
@@ -176,7 +179,7 @@ const NotFound = () => (
 
     {/* CTA */}
     <Link
-      to="/"
+      to="/tenders"
       className="inline-flex items-center gap-1.5 mt-1 text-sm font-medium text-foreground border border-border rounded-full px-4 py-2 hover:bg-muted transition-colors duration-150"
     >
       <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -201,6 +204,7 @@ const TenderDetailPage = () => {
     const { data } = await supabase.from("tenders").select("*").eq("id", id).maybeSingle();
     setTender(data as Tender | null);
     setLoading(false);
+    if (data) trackEvent("view_tender", { tender_id: id });
   };
 
   // Re-fetch without toggling `loading`, so in-place edits (status, bookmark)
@@ -215,6 +219,15 @@ const TenderDetailPage = () => {
 
   return (
     <PageContainer className="max-w-5xl space-y-6">
+
+      {tender && (
+        <Seo
+          title={displayTitle(tender)}
+          description={tender.summary_en ?? undefined}
+          url={typeof window !== "undefined" ? window.location.href : undefined}
+          type="article"
+        />
+      )}
 
       {/* ── Back button ── */}
       <button

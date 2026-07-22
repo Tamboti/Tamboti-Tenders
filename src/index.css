@@ -13,7 +13,8 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222 20% 11%;
 
-    --primary: 222 20% 11%;
+    /* Coursera brand blue #0056D2 */
+    --primary: 216 100% 41%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 220 14% 96%;
@@ -22,10 +23,13 @@
     --muted: 220 14% 96%;
     --muted-foreground: 220 9% 46%;
 
-    --accent: 24 95% 53%;
-    --accent-foreground: 0 0% 100%;
+    /* Neutral hover/highlight, not a brand color — keeps outline/ghost
+       button and menu-item hover states light gray instead of introducing
+       a second accent hue. */
+    --accent: 220 14% 96%;
+    --accent-foreground: 222 20% 18%;
 
-    --brand: 220 90% 56%;
+    --brand: 216 100% 41%;
     --brand-foreground: 0 0% 100%;
 
     --success: 142 71% 38%;
@@ -39,18 +43,18 @@
 
     --border: 220 13% 91%;
     --input: 220 13% 91%;
-    --ring: 220 90% 56%;
+    --ring: 216 100% 41%;
 
     --radius: 0.5rem;
 
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 220 9% 35%;
-    --sidebar-primary: 222 20% 11%;
+    --sidebar-primary: 216 100% 41%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 220 14% 96%;
     --sidebar-accent-foreground: 222 20% 11%;
     --sidebar-border: 220 13% 93%;
-    --sidebar-ring: 220 90% 56%;
+    --sidebar-ring: 216 100% 41%;
 
     --shadow-sm: 0 1px 2px 0 hsl(220 15% 20% / 0.04);
     --shadow-md: 0 4px 12px -2px hsl(220 15% 20% / 0.06);
@@ -64,14 +68,15 @@
     --card-foreground: 210 30% 96%;
     --popover: 222 25% 11%;
     --popover-foreground: 210 30% 96%;
-    --primary: 210 30% 96%;
-    --primary-foreground: 222 47% 11%;
+    /* Brighter than the light-mode #0056D2 for contrast against a dark background */
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
     --secondary: 222 20% 16%;
     --secondary-foreground: 210 30% 96%;
     --muted: 222 20% 16%;
     --muted-foreground: 220 10% 65%;
-    --accent: 217 91% 60%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 222 20% 16%;
+    --accent-foreground: 210 30% 96%;
     --destructive: 0 62% 45%;
     --destructive-foreground: 210 30% 96%;
     --border: 222 20% 18%;
@@ -90,8 +95,8 @@
 
 @layer base {
   :root {
-    --font-ui: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
-    --font-numeric: "IBM Plex Sans", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-ui: "Source Sans 3", "Noto Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-numeric: "Source Sans 3", "Noto Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   }
 
   * {
@@ -112,7 +117,7 @@
     font-variant-numeric: tabular-nums;
   }
 
-  /** Page `<h1>` — Inter only, no system serif */
+  /** Page `<h1>` — Source Sans 3 only, no system serif */
   .page-title {
     @apply text-2xl font-semibold tracking-tight text-foreground;
   }

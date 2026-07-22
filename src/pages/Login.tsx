@@ -1,22 +1,26 @@
 import { FormEvent, useState } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { trackEvent } from "@/lib/analytics";
 
 type Mode = "signin" | "signup";
 
 const Login = () => {
   const { session, loading } = useAuth();
-  const [mode, setMode] = useState<Mode>("signin");
+  const location = useLocation();
+  const from = (location.state as { from?: string } | null)?.from ?? "/tenders";
+  const [searchParams] = useSearchParams();
+  const [mode, setMode] = useState<Mode>(searchParams.get("mode") === "signup" ? "signup" : "signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   if (!loading && session) {
-    return <Navigate to="/" replace />;
+    return <Navigate to={from} replace />;
   }
 
   const onSubmit = async (e: FormEvent) => {
@@ -30,7 +34,7 @@ const Login = () => {
         email: normalized,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/`,
+          emailRedirectTo: `${window.location.origin}/tenders`,
           data: fullName.trim() ? { full_name: fullName.trim() } : undefined,
         },
       });
@@ -45,6 +49,7 @@ const Login = () => {
         toast.success("Account created. Check your email to confirm, then sign in.");
         setMode("signin");
       } else {
+        trackEvent("sign_up");
         toast.success("Welcome to Tender Compass!");
       }
       return;
@@ -55,7 +60,11 @@ const Login = () => {
       password,
     });
     setSubmitting(false);
-    if (error) toast.error(error.message || "Could not sign in");
+    if (error) {
+      toast.error(error.message || "Could not sign in");
+      return;
+    }
+    trackEvent("login");
   };
 
   const isReady =
