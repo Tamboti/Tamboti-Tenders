@@ -15,9 +15,11 @@ import {
   Dollar as IDollar,
   Drag as IDrag,
   EditPencil as IEditPencil,
+  Eye as IEye,
   FilterList as IFilterList,
   Globe as IGlobe,
   GraphUp as IGraphUp,
+  Group as IGroup,
   Label as ILabel,
   Lock as ILock,
   LogOut as ILogOut,
@@ -28,6 +30,7 @@ import {
   NavArrowLeft as INavArrowLeft,
   NavArrowRight as INavArrowRight,
   NavArrowUp as INavArrowUp,
+  Notes as INotes,
   OpenInWindow as IOpenInWindow,
   PageSearch as IPageSearch,
   Play as IPlay,
@@ -95,4 +98,7 @@ export const Layers = withDefaultStroke(ICube);
 export const Sparkles = withDefaultStroke(ISparks);
 export const Lock = withDefaultStroke(ILock);
 export const AlertTriangle = withDefaultStroke(IWarningTriangle);
+export const Users = withDefaultStroke(IGroup);
+export const FileText = withDefaultStroke(INotes);
+export const Eye = withDefaultStroke(IEye);
 

@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/sonner";
 import { handleDbError } from "@/lib/dbError";
 import { Plus, Sparkles, Loader2, Pencil } from "@/components/icons";
+import PostEditor from "./PostEditor";
 
 type Post = {
   id: string;
@@ -13,6 +14,7 @@ type Post = {
   title: string;
   status: "draft" | "published";
   source: "manual" | "ai";
+  category: string;
   updated_at: string;
 };
 
@@ -25,15 +27,16 @@ const sourceVariant = (s: string) =>
   s === "ai" ? "bg-primary/10 text-primary border-primary/30" : "bg-muted text-muted-foreground border-border";
 
 export default function PostsAdmin() {
-  const navigate = useNavigate();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
+  // undefined = modal closed; null = creating a new post; a string = editing that post's id.
+  const [editorPostId, setEditorPostId] = useState<string | null | undefined>(undefined);
 
   const load = async () => {
     const { data, error } = await supabase
       .from("posts")
-      .select("id, slug, title, status, source, updated_at")
+      .select("id, slug, title, status, source, category, updated_at")
       .order("updated_at", { ascending: false });
     if (error) {
       toast.error(handleDbError(error, "Failed to load posts"));
@@ -57,7 +60,7 @@ export default function PostsAdmin() {
       if (error) throw error;
       if (!data?.post?.id) throw new Error(data?.error ?? "No post returned");
       toast.success("Draft generated");
-      navigate(`/admin/posts/${data.post.id}`);
+      setEditorPostId(data.post.id);
     } catch (e) {
       toast.error("Generation failed", { description: e instanceof Error ? e.message : "Unknown error" });
     } finally {
@@ -83,7 +86,7 @@ export default function PostsAdmin() {
             )}
             Generate post
           </Button>
-          <Button size="sm" onClick={() => navigate("/admin/posts/new")}>
+          <Button size="sm" onClick={() => setEditorPostId(null)}>
             <Plus className="h-3.5 w-3.5 mr-1.5" />
             New post
           </Button>
@@ -96,6 +99,7 @@ export default function PostsAdmin() {
             <thead className="bg-secondary/40 text-xs text-muted-foreground">
               <tr>
                 <th className="text-left font-medium px-4 py-2">Title</th>
+                <th className="text-left font-medium px-4 py-2">Category</th>
                 <th className="text-left font-medium px-4 py-2">Status</th>
                 <th className="text-left font-medium px-4 py-2">Source</th>
                 <th className="text-left font-medium px-4 py-2">Updated</th>
@@ -105,13 +109,13 @@ export default function PostsAdmin() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
+                  <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
                     Loading...
                   </td>
                 </tr>
               ) : posts.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
+                  <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
                     No posts yet. Generate one from live trends or write one from scratch.
                   </td>
                 </tr>
@@ -120,9 +124,10 @@ export default function PostsAdmin() {
                   <tr
                     key={p.id}
                     className="border-t border-border hover:bg-muted/30 transition-colors cursor-pointer"
-                    onClick={() => navigate(`/admin/posts/${p.id}`)}
+                    onClick={() => setEditorPostId(p.id)}
                   >
                     <td className="px-4 py-2 font-medium text-foreground max-w-md truncate">{p.title}</td>
+                    <td className="px-4 py-2 text-muted-foreground">{p.category}</td>
                     <td className="px-4 py-2">
                       <span className={`inline-block px-1.5 py-0.5 rounded border text-[10px] ${statusVariant(p.status)}`}>
                         {p.status}
@@ -156,12 +161,13 @@ export default function PostsAdmin() {
               <div
                 key={p.id}
                 className="px-4 py-3.5 space-y-2 cursor-pointer"
-                onClick={() => navigate(`/admin/posts/${p.id}`)}
+                onClick={() => setEditorPostId(p.id)}
               >
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-[13px] font-medium text-foreground truncate">{p.title}</span>
+                  <span className="min-w-0 flex-1 text-[13px] font-medium text-foreground truncate">{p.title}</span>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
+                  <span className="text-[11px] text-muted-foreground self-center">{p.category}</span>
                   <span className={`inline-block px-1.5 py-0.5 rounded border text-[10px] ${statusVariant(p.status)}`}>
                     {p.status}
                   </span>
@@ -177,6 +183,18 @@ export default function PostsAdmin() {
           )}
         </div>
       </Card>
+
+      <Dialog open={editorPostId !== undefined} onOpenChange={(open) => !open && setEditorPostId(undefined)}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          {editorPostId !== undefined && (
+            <PostEditor
+              postId={editorPostId}
+              onSaved={load}
+              onCreated={(id) => setEditorPostId(id)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

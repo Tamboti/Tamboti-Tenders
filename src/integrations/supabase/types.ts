@@ -143,6 +143,32 @@ export type Database = {
         }
         Relationships: []
       }
+      billing_customers: {
+        Row: {
+          created_at: string
+          stripe_customer_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          stripe_customer_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          stripe_customer_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_customers_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       country_reference: {
         Row: {
           canonical_name: string
@@ -170,6 +196,7 @@ export type Database = {
       posts: {
         Row: {
           author_id: string | null
+          category: string
           content_html: string
           cover_image_url: string | null
           created_at: string
@@ -186,6 +213,7 @@ export type Database = {
         }
         Insert: {
           author_id?: string | null
+          category?: string
           content_html?: string
           cover_image_url?: string | null
           created_at?: string
@@ -202,6 +230,7 @@ export type Database = {
         }
         Update: {
           author_id?: string | null
+          category?: string
           content_html?: string
           cover_image_url?: string | null
           created_at?: string
@@ -258,6 +287,65 @@ export type Database = {
           status?: string
         }
         Relationships: []
+      }
+      site_visits: {
+        Row: {
+          created_at: string
+          device_id: string
+          visited_on: string
+        }
+        Insert: {
+          created_at?: string
+          device_id: string
+          visited_on?: string
+        }
+        Update: {
+          created_at?: string
+          device_id?: string
+          visited_on?: string
+        }
+        Relationships: []
+      }
+      subscriptions: {
+        Row: {
+          created_at: string
+          current_period_end: string | null
+          id: string
+          status: string
+          stripe_price_id: string | null
+          stripe_subscription_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_period_end?: string | null
+          id?: string
+          status?: string
+          stripe_price_id?: string | null
+          stripe_subscription_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          current_period_end?: string | null
+          id?: string
+          status?: string
+          stripe_price_id?: string | null
+          stripe_subscription_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tender_bookmarks: {
         Row: {
@@ -650,9 +738,3 @@ export type CompositeTypes<
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
     ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
-
-export const Constants = {
-  public: {
-    Enums: {},
-  },
-} as const

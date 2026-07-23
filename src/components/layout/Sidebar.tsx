@@ -88,15 +88,17 @@ export const Sidebar = ({ mobile = false, onNavigate }: SidebarProps) => {
             compact ? "justify-center" : "gap-2 px-2"
           )}
         >
-          <img
-            src="https://luykyredvhhcamcmgahp.supabase.co/storage/v1/object/public/Company%20assets/Gemini_Generated_Image_k92dq5k92dq5k92d-removebg-preview.png"
-            alt="Tender Compass"
-            className="h-9 w-9 object-contain shrink-0"
-          />
+          {!mobile && (
+            <img
+              src="https://luykyredvhhcamcmgahp.supabase.co/storage/v1/object/public/Company%20assets/Gemini_Generated_Image_k92dq5k92dq5k92d-removebg-preview.png"
+              alt="Tender Compass"
+              className="h-9 w-9 object-contain shrink-0"
+            />
+          )}
 
           {!compact && (
             <h1 className="text-base font-semibold tracking-tight truncate text-foreground">
-              Tender Aggregator
+              Admin dashboard
             </h1>
           )}
         </div>
@@ -131,26 +133,35 @@ export const Sidebar = ({ mobile = false, onNavigate }: SidebarProps) => {
                       ? "justify-center items-center h-10 w-10 mx-auto"
                       : "items-center gap-2.5 px-3 py-2 text-sm",
                     isActive
-                      ? "bg-background shadow-sm border border-border text-sidebar-accent-foreground font-medium"
+                      ? "bg-background shadow-sm border border-border text-primary font-medium"
                       : "text-sidebar-foreground hover:bg-sidebar-accent"
                   )
                 }
               >
-                <item.icon className="h-5 w-5 shrink-0 text-muted-foreground group-hover:text-foreground transition-colors" />
+                {({ isActive }) => (
+                  <>
+                    <item.icon
+                      className={cn(
+                        "h-5 w-5 shrink-0 transition-colors",
+                        isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
+                      )}
+                    />
 
-                <AnimatePresence initial={false}>
-                  {!compact && (
-                    <motion.span
-                      initial={{ opacity: 0, x: -4 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -4 }}
-                      transition={{ duration: 0.15 }}
-                      className="flex-1 truncate"
-                    >
-                      {item.label}
-                    </motion.span>
-                  )}
-                </AnimatePresence>
+                    <AnimatePresence initial={false}>
+                      {!compact && (
+                        <motion.span
+                          initial={{ opacity: 0, x: -4 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          exit={{ opacity: 0, x: -4 }}
+                          transition={{ duration: 0.15 }}
+                          className="flex-1 truncate"
+                        >
+                          {item.label}
+                        </motion.span>
+                      )}
+                    </AnimatePresence>
+                  </>
+                )}
               </NavLink>
             ))}
           </div>

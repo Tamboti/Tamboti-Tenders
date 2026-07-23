@@ -122,7 +122,7 @@ export default function Sources() {
   };
 
   return (
-    <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6 overflow-x-hidden">
 
       {/* ── Header ── */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -167,33 +167,7 @@ export default function Sources() {
          */}
       </div>
 
-      {/* ── Unmapped countries (data quality) ── */}
-      {unmappedCountries.length > 0 && (
-        <Card className="border-warning/30 bg-warning/5 p-4 sm:p-5">
-          <div className="flex items-start gap-3">
-            <AlertTriangle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
-            <div className="space-y-2 min-w-0">
-              <div>
-                <h2 className="text-sm font-medium text-foreground">Unmapped countries</h2>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  These country spellings appear on tenders but aren't in country_reference yet,
-                  so they can't be classified by continent/region. Add them to country_reference.
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {unmappedCountries.map((c) => (
-                  <span
-                    key={c}
-                    className="inline-flex items-center rounded border border-warning/30 bg-background px-1.5 py-0.5 text-[11px] font-mono text-foreground"
-                  >
-                    {c}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
-        </Card>
-      )}
+      
 
       {/* ── Scraper cards ──
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -360,7 +334,7 @@ export default function Sources() {
               <div key={l.id} className="px-4 py-3.5 space-y-2">
                 {/* Row 1: source + status */}
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-[13px] font-medium text-foreground truncate">{l.source}</span>
+                  <span className="min-w-0 flex-1 text-[13px] font-medium text-foreground truncate">{l.source}</span>
                   <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded border text-[10px] shrink-0 ${statusVariant(l.status)}`}>
                     <StatusIcon status={l.status} />
                     {l.status}
@@ -389,7 +363,7 @@ export default function Sources() {
 
                 {/* Row 3: error if any */}
                 {l.error_message && (
-                  <p className="text-[11px] text-destructive line-clamp-2 font-mono bg-destructive/5 rounded px-2 py-1">
+                  <p className="text-[11px] text-destructive line-clamp-2 break-words font-mono bg-destructive/5 rounded px-2 py-1">
                     {l.error_message}
                   </p>
                 )}

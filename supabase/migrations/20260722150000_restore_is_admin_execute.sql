@@ -1,0 +1,14 @@
+-- A prior migration (20260512201146) revoked EXECUTE on is_admin() from
+-- anon/authenticated, on the mistaken assumption that only "the database
+-- engine" needs it for RLS. In reality, RLS predicates are evaluated as the
+-- querying role, so any policy that calls is_admin() in its USING/WITH CHECK
+-- clause fails with "permission denied for function is_admin" the moment
+-- the predicate can't short-circuit around the call (e.g. any tenders row
+-- for a non-admin, or any unpublished post) — breaking tenders admin
+-- update/delete, all of posts_select/posts_write, and the blog-images
+-- storage policies for every role, not just non-admins.
+--
+-- is_admin() is SECURITY DEFINER and only ever returns a boolean, so
+-- granting EXECUTE back is safe — it doesn't expose anything beyond
+-- "is this uid an admin".
+GRANT EXECUTE ON FUNCTION public.is_admin(uuid) TO PUBLIC;

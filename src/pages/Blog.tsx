@@ -1,26 +1,31 @@
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { handleDbError } from "@/lib/dbError";
 import { Seo } from "@/components/seo/Seo";
+import { cn } from "@/lib/utils";
+import { POST_CATEGORIES } from "@/lib/blogCategories";
 
 type PostSummary = {
   slug: string;
   title: string;
   excerpt: string | null;
   cover_image_url: string | null;
+  category: string;
   published_at: string | null;
 };
 
 const Blog = () => {
   const navigate = useNavigate();
+  const [activeCategory, setActiveCategory] = useState<string>("All");
 
   const postsQuery = useQuery({
     queryKey: ["blog-posts"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("posts")
-        .select("slug, title, excerpt, cover_image_url, published_at")
+        .select("slug, title, excerpt, cover_image_url, category, published_at")
         .eq("status", "published")
         .order("published_at", { ascending: false });
       if (error) throw new Error(handleDbError(error));
@@ -31,64 +36,100 @@ const Blog = () => {
     refetchOnWindowFocus: false,
   });
 
+  const posts = postsQuery.data ?? [];
+  const filtered = useMemo(
+    () => (activeCategory === "All" ? posts : posts.filter((p) => p.category === activeCategory)),
+    [posts, activeCategory]
+  );
+
   return (
-    <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
+    <div className="">
       <Seo
         title="Blog"
         description="Procurement market trends and tender insights across Africa."
         url={typeof window !== "undefined" ? window.location.origin + "/blog" : undefined}
       />
 
-      <div className="mb-10 space-y-2 text-center">
-        <h1 className="text-3xl font-bold tracking-tight text-foreground">Blog</h1>
-        <p className="text-sm text-muted-foreground">
-          Procurement market trends and tender insights across Africa.
-        </p>
+      {/* Hero */}
+      <div className="mx-auto max-w-3xl px-4 pt-16 pb-10 text-center sm:px-6 lg:px-8">
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">Our blog</p>
+        <h1 className="mt-3 text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+          Procurement market trends and tender insights across Africa
+        </h1>
+        
       </div>
 
-      {postsQuery.isLoading ? (
-        <div className="space-y-4">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="h-24 animate-pulse rounded-xl bg-muted/50" />
-          ))}
-        </div>
-      ) : postsQuery.data && postsQuery.data.length > 0 ? (
-        <div className="space-y-4">
-          {postsQuery.data.map((post) => (
-            <button
-              key={post.slug}
-              type="button"
-              onClick={() => navigate(`/blog/${post.slug}`)}
-              className="flex w-full gap-4 rounded-xl border border-border/70 bg-card p-4 text-left shadow-sm transition-colors hover:bg-muted/30"
-            >
-              {post.cover_image_url && (
-                <img
-                  src={post.cover_image_url}
-                  alt=""
-                  className="h-20 w-28 shrink-0 rounded-lg object-cover"
-                />
-              )}
-              <div className="min-w-0 space-y-1">
-                <h2 className="font-semibold text-foreground line-clamp-1">{post.title}</h2>
-                {post.excerpt && (
-                  <p className="text-sm text-muted-foreground line-clamp-2">{post.excerpt}</p>
-                )}
-                {post.published_at && (
-                  <p className="text-xs text-muted-foreground/70">
-                    {new Date(post.published_at).toLocaleDateString(undefined, {
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    })}
-                  </p>
-                )}
+      {/* Category filter */}
+      <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-center gap-2 px-4 pb-10 sm:px-6 lg:px-8">
+        {["All", ...POST_CATEGORIES].map((c) => (
+          <button
+            key={c}
+            type="button"
+            onClick={() => setActiveCategory(c)}
+            className={cn(
+              "rounded-full px-4 py-2 text-sm font-medium transition-colors",
+              activeCategory === c
+                ? "bg-primary text-primary-foreground"
+                : "border border-border bg-background text-foreground hover:bg-muted"
+            )}
+          >
+            {c}
+          </button>
+        ))}
+      </div>
+
+      {/* Grid */}
+      <div className="mx-auto max-w-6xl px-4 pb-16 sm:px-6 lg:px-8">
+        {postsQuery.isLoading ? (
+          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="space-y-3">
+                <div className="aspect-[4/3] animate-pulse rounded-xl bg-muted/60" />
+                <div className="h-3 w-1/3 animate-pulse rounded bg-muted/60" />
+                <div className="h-5 w-4/5 animate-pulse rounded bg-muted/60" />
               </div>
-            </button>
-          ))}
-        </div>
-      ) : (
-        <p className="text-center text-sm text-muted-foreground">No posts published yet — check back soon.</p>
-      )}
+            ))}
+          </div>
+        ) : filtered.length > 0 ? (
+          <div className="grid grid-cols-1 gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
+            {filtered.map((post) => (
+              <button
+                key={post.slug}
+                type="button"
+                onClick={() => navigate(`/blog/${post.slug}`)}
+                className="group flex flex-col text-left"
+              >
+                <div className="aspect-[4/3] w-full overflow-hidden rounded-xl bg-muted">
+                  {post.cover_image_url ? (
+                    <img
+                      src={post.cover_image_url}
+                      alt=""
+                      className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-[1.03]"
+                    />
+                  ) : (
+                    <div className="h-full w-full bg-gradient-to-br from-muted to-muted/50" />
+                  )}
+                </div>
+                <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-primary">
+                  {post.category}
+                </p>
+                <h2 className="mt-1 text-lg font-bold leading-snug text-foreground line-clamp-2 group-hover:underline">
+                  {post.title}
+                </h2>
+                {post.excerpt && (
+                  <p className="mt-1.5 text-sm text-muted-foreground line-clamp-2">{post.excerpt}</p>
+                )}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <p className="py-16 text-center text-sm text-muted-foreground">
+            {activeCategory === "All"
+              ? "No posts published yet — check back soon."
+              : `No posts in "${activeCategory}" yet.`}
+          </p>
+        )}
+      </div>
     </div>
   );
 };

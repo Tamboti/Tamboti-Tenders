@@ -859,10 +859,10 @@ const Tenders = () => {
                 <button
                   type="button"
                   className={cn(
-                    "relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border shadow-sm transition-colors",
+                    "relative flex h-11 bg-primary w-11 shrink-0 items-center justify-center rounded-xl border shadow-sm transition-colors",
                     activeFilters.length > 0
                       ? "border-primary/50 bg-primary/5 text-primary"
-                      : "border-border/70 bg-card text-muted-foreground"
+                      : "border-border/70 bg-primary text-white"
                   )}
                   aria-label="Open filters"
                 >
@@ -1076,7 +1076,10 @@ const Tenders = () => {
           <button
             type="button"
             onClick={scrollButton === "top" ? scrollToTop : scrollToBottom}
-            className="fixed bottom-6 right-6 z-50 inline-flex h-11 w-11 items-center justify-center rounded-full border border-border/70 bg-card text-foreground shadow-lg transition-all hover:bg-muted active:scale-95"
+            className={cn(
+              "fixed right-6 z-50 inline-flex h-11 w-11 items-center justify-center rounded-full border border-border/70 bg-primary text-white shadow-lg transition-all hover:bg-primary/40 active:scale-95",
+              user ? "bottom-20 md:bottom-6" : "bottom-6"
+            )}
             aria-label={scrollButton === "top" ? "Back to top" : "Scroll to bottom"}
           >
             {scrollButton === "top" ? (

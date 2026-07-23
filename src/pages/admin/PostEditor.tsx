@@ -1,16 +1,16 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Card } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/components/ui/sonner";
 import { handleDbError } from "@/lib/dbError";
 import { CoverImageUpload } from "@/components/blog/CoverImageUpload";
 import { RichTextEditor } from "@/components/blog/RichTextEditor";
-import { ArrowLeft, Loader2, Sparkles } from "@/components/icons";
+import { Loader2, Sparkles } from "@/components/icons";
+import { POST_CATEGORIES } from "@/lib/blogCategories";
 
 type PostForm = {
   slug: string;
@@ -20,6 +20,7 @@ type PostForm = {
   content_html: string;
   status: "draft" | "published";
   source: "manual" | "ai";
+  category: string;
 };
 
 const EMPTY_FORM: PostForm = {
@@ -30,6 +31,7 @@ const EMPTY_FORM: PostForm = {
   content_html: "",
   status: "draft",
   source: "manual",
+  category: "General",
 };
 
 const slugify = (s: string) =>
@@ -40,10 +42,17 @@ const slugify = (s: string) =>
     .replace(/^-+|-+$/g, "")
     .slice(0, 80);
 
-export default function PostEditor() {
-  const { id } = useParams();
-  const isNew = !id;
-  const navigate = useNavigate();
+export type PostEditorProps = {
+  // null = creating a new post; a string = editing that post's id.
+  postId: string | null;
+  onSaved: () => void;
+  // Fired right after a brand-new post's first save, so the parent can swap
+  // the modal from "new" to "editing <id>" without closing it.
+  onCreated: (id: string) => void;
+};
+
+export default function PostEditor({ postId, onSaved, onCreated }: PostEditorProps) {
+  const isNew = !postId;
 
   const [form, setForm] = useState<PostForm>(EMPTY_FORM);
   const [slugTouched, setSlugTouched] = useState(false);
@@ -51,11 +60,17 @@ export default function PostEditor() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (isNew) return;
+    if (isNew) {
+      setForm(EMPTY_FORM);
+      setSlugTouched(false);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
     supabase
       .from("posts")
-      .select("slug, title, excerpt, cover_image_url, content_html, status, source")
-      .eq("id", id)
+      .select("slug, title, excerpt, cover_image_url, content_html, status, source, category")
+      .eq("id", postId)
       .maybeSingle()
       .then(({ data, error }) => {
         if (error) {
@@ -66,7 +81,7 @@ export default function PostEditor() {
         }
         setLoading(false);
       });
-  }, [id, isNew]);
+  }, [postId, isNew]);
 
   const setTitle = (title: string) => {
     setForm((f) => ({ ...f, title, slug: slugTouched ? f.slug : slugify(title) }));
@@ -84,6 +99,7 @@ export default function PostEditor() {
       excerpt: form.excerpt.trim() || null,
       cover_image_url: form.cover_image_url,
       content_html: form.content_html,
+      category: form.category,
       status,
       seo_title: form.title.trim(),
       seo_description: form.excerpt.trim() || null,
@@ -92,7 +108,7 @@ export default function PostEditor() {
 
     const { data, error } = isNew
       ? await supabase.from("posts").insert(payload).select("id").single()
-      : await supabase.from("posts").update(payload).eq("id", id).select("id").single();
+      : await supabase.from("posts").update(payload).eq("id", postId).select("id").single();
 
     setSaving(false);
     if (error) {
@@ -102,7 +118,8 @@ export default function PostEditor() {
 
     toast.success(status === "published" ? "Post published" : "Draft saved");
     setForm((f) => ({ ...f, status }));
-    if (isNew && data) navigate(`/admin/posts/${data.id}`, { replace: true });
+    onSaved();
+    if (isNew && data) onCreated(data.id);
   };
 
   if (loading) {
@@ -114,19 +131,10 @@ export default function PostEditor() {
   }
 
   return (
-    <div className="p-4 sm:p-6 max-w-3xl mx-auto space-y-6">
-      <button
-        type="button"
-        onClick={() => navigate("/admin/posts")}
-        className="group inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-      >
-        <ArrowLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-0.5" />
-        Posts
-      </button>
-
+    <div className="space-y-5">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="page-title">{isNew ? "New post" : "Edit post"}</h1>
+          <h2 className="text-lg font-semibold text-foreground">{isNew ? "New post" : "Edit post"}</h2>
           {form.source === "ai" && (
             <p className="mt-1 inline-flex items-center gap-1 text-xs text-primary">
               <Sparkles className="h-3 w-3" /> AI-generated draft — review before publishing
@@ -145,7 +153,7 @@ export default function PostEditor() {
         </div>
       </div>
 
-      <Card className="p-5 space-y-5">
+      <div className="space-y-5">
         <div className="space-y-1.5">
           <Label htmlFor="title">Title</Label>
           <Input id="title" value={form.title} onChange={(e) => setTitle(e.target.value)} placeholder="Post title" />
@@ -162,6 +170,25 @@ export default function PostEditor() {
             }}
             placeholder="post-slug"
           />
+        </div>
+
+        <div className="space-y-1.5">
+          <Label>Category</Label>
+          <Select
+            value={form.category}
+            onValueChange={(category) => setForm((f) => ({ ...f, category }))}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {POST_CATEGORIES.map((c) => (
+                <SelectItem key={c} value={c}>
+                  {c}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="space-y-1.5">
@@ -190,7 +217,7 @@ export default function PostEditor() {
             onChange={(html) => setForm((f) => ({ ...f, content_html: html }))}
           />
         </div>
-      </Card>
+      </div>
     </div>
   );
 }

@@ -554,7 +554,7 @@ const Bookmarks = () => {
 
       {/* ── Controls ── */}
       {/* Desktop */}
-      <div className="hidden md:flex items-stretch divide-x divide-border/60 rounded-2xl border border-border/70 bg-card shadow-sm overflow-hidden">
+      <div className="hidden md:flex items-stretch divide-x divide-border/60 rounded-lg border border-border/70 bg-card shadow-sm overflow-hidden">
         <div className="flex flex-1 min-w-[200px] items-center gap-2.5 px-3.5">
           <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
             <Search className="h-3.5 w-3.5" />

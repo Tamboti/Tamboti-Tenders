@@ -10,6 +10,7 @@ type Post = {
   excerpt: string | null;
   cover_image_url: string | null;
   content_html: string;
+  category: string;
   seo_title: string | null;
   seo_description: string | null;
   published_at: string | null;
@@ -25,7 +26,7 @@ const BlogPost = () => {
     setLoading(true);
     supabase
       .from("posts")
-      .select("title, excerpt, cover_image_url, content_html, seo_title, seo_description, published_at")
+      .select("title, excerpt, cover_image_url, content_html, category, seo_title, seo_description, published_at")
       .eq("slug", slug)
       .eq("status", "published")
       .maybeSingle()
@@ -84,6 +85,7 @@ const BlogPost = () => {
 
       <article className="space-y-6">
         <header className="space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-primary">{post.category}</p>
           <h1 className="text-3xl font-bold tracking-tight text-foreground">{post.title}</h1>
           {post.published_at && (
             <p className="text-sm text-muted-foreground">

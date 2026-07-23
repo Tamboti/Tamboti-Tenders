@@ -19,6 +19,7 @@ import { handleDbError } from "@/lib/dbError";
 import { Button } from "@/components/ui/button";
 import { Search, Bell, Bookmark, Globe } from "@/components/icons";
 import { Seo } from "@/components/seo/Seo";
+import { useAuth } from "@/contexts/AuthContext";
 
 // Set this once a real hero image is ready — the placeholder renders until then.
 const HERO_IMAGE_URL: string | null = "https://luykyredvhhcamcmgahp.supabase.co/storage/v1/object/public/Company%20assets/ChatGPT_Image_Jul_22__2026__06_34_52_PM-removebg-preview.png";
@@ -58,6 +59,7 @@ const VALUE_PROPS = [
 
 export const Landing = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { byIso2 } = useCountryReference();
   const [Icon0, Icon1, Icon2] = VALUE_PROPS.map((p) => p.icon);
 
@@ -140,20 +142,27 @@ export const Landing = () => {
       {/* Hero */}
       <section className="border-b border-border/60 bg-muted/20">
         <div className="mx-auto max-w-6xl px-4 py-20 text-center sm:px-6 sm:py-28 lg:px-8">
-          <h1 className="mx-auto max-w-2xl text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">
+          <h1 className="mx-auto max-w-2xl text-3xl  font-semibold tracking-tight text-foreground sm:text-5xl">
             Never Miss an African Procurement Opportunity Again.
           </h1>
           <p className="mx-auto mt-5 max-w-xl text-lg text-muted-foreground">
-            Search live tender notices across Africa, no account required. Sign up free to bookmark, get
-            alerts, and never miss a deadline.
+            {user
+              ? "Pick up where you left off check your bookmarks and alerts or keep browsing for new opportunities."
+              : "Search live tender notices across Africa, no account required. Sign up free to bookmark, get alerts, and never miss a deadline."}
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <Button size="lg" onClick={() => navigate("/tenders")}>
               Browse tenders
             </Button>
-            <Button size="lg" variant="outline" onClick={() => navigate("/login?mode=signup")}>
-              Create free account
-            </Button>
+            {user ? (
+              <Button size="lg" variant="outline" onClick={() => navigate("/bookmarks")}>
+                View your bookmarks
+              </Button>
+            ) : (
+              <Button size="lg" variant="outline" onClick={() => navigate("/login?mode=signup")}>
+                Create free account
+              </Button>
+            )}
           </div>
 
           {HERO_IMAGE_URL ? (
@@ -177,7 +186,7 @@ export const Landing = () => {
 
       {/* Stats strip */}
       <section className="border-b border-border/60">
-        <div className="mx-auto grid max-w-6xl grid-cols-2 gap-6 px-4 py-10 sm:grid-cols-3 sm:px-6 lg:px-8">
+        <div className="mx-auto grid max-w-6xl  text-center grid-cols-2 gap-6 px-4 py-10 sm:grid-cols-3 sm:px-6 lg:px-8">
           <Stat label="Open tenders" value={statsQuery.data?.total ?? "—"} />
           <Stat label="Closing within 7 days" value={statsQuery.data?.closingSoon ?? "—"} />
           <Stat label="Countries covered" value={countriesCovered || "—"} />
@@ -206,20 +215,20 @@ export const Landing = () => {
           </div>
 
           {/* Table — large screens */}
-          <div className="hidden overflow-hidden rounded-xl border border-border bg-card lg:block">
+          <div className="hidden overflow-hidden rounded-lg border border-border bg-card lg:block">
             <Table className="border-separate border-spacing-0">
               <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead className="h-9 border-b border-border/60 bg-muted/20 px-4 text-[10.5px] font-semibold uppercase tracking-[0.09em] text-muted-foreground/80">
+                <TableRow className="hover:bg-transparent bg-primary">
+                  <TableHead className="h-9 border-b border-border/60 bg-muted/20 px-4 text-[10.5px] font-semibold uppercase tracking-[0.09em] text-white">
                     Tender
                   </TableHead>
-                  <TableHead className="h-9 w-[10rem] border-b border-border/60 bg-muted/20 px-4 text-[10.5px] font-semibold uppercase tracking-[0.09em] text-muted-foreground/80">
+                  <TableHead className="h-9 w-[10rem] border-b border-border/60 bg-muted/20 px-4 text-[10.5px] font-semibold uppercase tracking-[0.09em] text-white">
                     Country
                   </TableHead>
-                  <TableHead className="h-9 w-[9rem] border-b border-border/60 bg-muted/20 px-4 text-[10.5px] font-semibold uppercase tracking-[0.09em] text-muted-foreground/80">
+                  <TableHead className="h-9 w-[9rem] border-b border-border/60 bg-muted/20 px-4 text-[10.5px] font-semibold uppercase tracking-[0.09em] text-white">
                     Category
                   </TableHead>
-                  <TableHead className="h-9 w-[8rem] border-b border-border/60 bg-muted/20 px-4 text-[10.5px] font-semibold uppercase tracking-[0.09em] text-muted-foreground/80">
+                  <TableHead className="h-9 w-[8rem] border-b border-border/60 bg-muted/20 px-4 text-[10.5px] font-semibold uppercase tracking-[0.09em] text-white">
                     Deadline
                   </TableHead>
                 </TableRow>
@@ -228,7 +237,7 @@ export const Landing = () => {
                 {featuredQuery.data.map((t) => (
                   <TableRow
                     key={t.id}
-                    className="cursor-pointer border-b border-border/50 transition-colors last:border-0 hover:bg-muted/30"
+                    className="cursor-pointer border-b border-border/50 last:border-0"
                     onClick={() => navigate(`/tender/${t.id}`)}
                   >
                     <TableCell className="max-w-[28rem] px-4 py-3.5 align-middle">
@@ -284,9 +293,9 @@ export const Landing = () => {
           </div>
 
           {/* Cards */}
-          <div className="mt-8 grid gap-8 md:grid-cols-2 xl:grid-cols-3">
+          <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {/* Each card below has its own faint pastel color and unique background SVG shape inspired by the image */}
-            <div className="relative flex min-h-[330px] flex-col rounded-xl p-6 overflow-hidden group border border-transparent" style={{ background: "linear-gradient(135deg, #FFF7EA 85%, #FFE8C7 100%)" }}>
+            <div className="relative flex h-[280px] sm:min-h-[300px] flex-col rounded-xl p-6 overflow-hidden group border border-transparent" style={{ background: "linear-gradient(135deg, #FFF7EA 85%, #FFE8C7 100%)" }}>
               
               {/* Icon */}
               <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#FFD488]/20 text-[#B58321] relative z-10 mb-4">
@@ -298,7 +307,7 @@ export const Landing = () => {
                 <p className="text-base  text-[#665100]">{VALUE_PROPS[0].body}</p>
               </div>
             </div>
-            <div className="relative flex min-h-[330px] flex-col rounded-xl p-6 overflow-hidden group border border-transparent" style={{ background: "linear-gradient(135deg, #ECF4FF 85%, #D4E7FC 100%)" }}>
+            <div className="relative flex h-[280px] sm:min-h-[300px] flex-col rounded-xl p-6 overflow-hidden group border border-transparent" style={{ background: "linear-gradient(135deg, #ECF4FF 85%, #D4E7FC 100%)" }}>
               
               <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#A6CAFF]/20 text-[#20538D] relative z-10 mb-4">
                 <Icon1 className="h-8 w-8" />
@@ -308,7 +317,7 @@ export const Landing = () => {
                 <p className="text-base  text-[#20538D]/80">{VALUE_PROPS[1].body}</p>
               </div>
             </div>
-            <div className="relative flex min-h-[330px] flex-col rounded-xl p-6 overflow-hidden group border border-transparent" style={{ background: "linear-gradient(135deg, #F6ECFF 85%, #E5DAFF 100%)" }}>
+            <div className="relative flex h-[280px] sm:min-h-[300px] flex-col rounded-xl p-6 overflow-hidden group border border-transparent" style={{ background: "linear-gradient(135deg, #F6ECFF 85%, #E5DAFF 100%)" }}>
               {/* Background SVG shape - soft purple wave */}
               
               <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#C6A8F6]/20 text-[#6B29AA] relative z-10 mb-4">

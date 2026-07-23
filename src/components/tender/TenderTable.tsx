@@ -101,7 +101,7 @@ export type TenderTableProps = {
 const HeaderCell = ({ children, className }: { children?: ReactNode; className?: string }) => (
   <TableHead
     className={cn(
-      "h-9 border-b border-border/60 bg-muted/20 px-4 text-[10.5px] font-semibold uppercase tracking-[0.09em] text-muted-foreground/80",
+      "h-9 bg-primary px-4 text-[10.5px] font-semibold uppercase tracking-[0.09em] text-primary-foreground",
       className
     )}
   >
@@ -137,7 +137,7 @@ export const TenderTable = ({
 }: TenderTableProps) => {
   const cols = 5;
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-card">
+    <div className="overflow-hidden rounded-lg border border-border bg-card">
       {/* Mobile card list */}
       <div className="md:hidden divide-y divide-border/60">
         {loading ? (
@@ -244,7 +244,7 @@ export const TenderTable = ({
       {/* Desktop table */}
       <Table className="border-separate border-spacing-0 hidden md:table">
         <TableHeader>
-          <TableRow className="hover:bg-transparent">
+          <TableRow className="hover:bg-transparent bg-primary">
             <HeaderCell className="w-10 px-3" />
             <HeaderCell>Tender</HeaderCell>
             <HeaderCell className="w-[10rem]">Country</HeaderCell>
@@ -276,7 +276,7 @@ export const TenderTable = ({
                   transition={{ duration: 0.15, delay: Math.min(idx * 0.012, 0.18) }}
                   tabIndex={0}
                   className={cn(
-                    "group cursor-pointer border-b border-border/50 transition-colors hover:bg-muted/30",
+                    "group cursor-pointer border-b border-border/50 transition-colors hover:bg-primary/5",
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                     selected && "bg-primary/5"
                   )}

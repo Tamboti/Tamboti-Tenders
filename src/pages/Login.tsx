@@ -2,6 +2,7 @@ import { FormEvent, useState } from "react";
 import { Navigate, useLocation, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useUserRole } from "@/hooks/use-user-role";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { trackEvent } from "@/lib/analytics";
@@ -10,8 +11,12 @@ type Mode = "signin" | "signup";
 
 const Login = () => {
   const { session, loading } = useAuth();
+  const { isAdmin, isLoading: roleLoading } = useUserRole();
   const location = useLocation();
-  const from = (location.state as { from?: string } | null)?.from ?? "/tenders";
+  // A `from` in nav state means RequireAuth bounced them here from a specific
+  // page — honor that over the role default. Otherwise send admins straight
+  // to the admin dashboard, since that's where their work is.
+  const explicitFrom = (location.state as { from?: string } | null)?.from;
   const [searchParams] = useSearchParams();
   const [mode, setMode] = useState<Mode>(searchParams.get("mode") === "signup" ? "signup" : "signin");
   const [email, setEmail] = useState("");
@@ -20,7 +25,15 @@ const Login = () => {
   const [submitting, setSubmitting] = useState(false);
 
   if (!loading && session) {
-    return <Navigate to={from} replace />;
+    if (explicitFrom) return <Navigate to={explicitFrom} replace />;
+    if (roleLoading) {
+      return (
+        <div className="min-h-screen grid place-items-center bg-background">
+          <div className="text-sm text-muted-foreground">Signing in...</div>
+        </div>
+      );
+    }
+    return <Navigate to={isAdmin ? "/sources" : "/tenders"} replace />;
   }
 
   const onSubmit = async (e: FormEvent) => {
@@ -75,12 +88,7 @@ const Login = () => {
 
   return (
     <div className="min-h-screen w-full bg-background flex items-center justify-center p-6">
-      <div
-        aria-hidden
-        className="pointer-events-none fixed inset-0 flex items-start justify-center overflow-hidden"
-      >
-        <div className="mt-[-120px] h-[500px] w-[700px] rounded-full bg-primary/5 blur-[80px]" />
-      </div>
+      
 
       <div className="relative w-full max-w-[380px] flex flex-col">
         <div className="mb-5">
@@ -178,7 +186,7 @@ const Login = () => {
           <button
             type="submit"
             disabled={!isReady}
-            className="mt-2 h-[46px] w-full rounded-[10px] bg-foreground text-background text-[15px] font-medium flex items-center justify-center gap-2 transition-opacity duration-150 hover:opacity-80 disabled:opacity-30 disabled:cursor-not-allowed"
+            className="mt-2 h-[46px] w-full rounded-[10px] bg-primary text-white text-[15px] font-medium flex items-center justify-center gap-2 transition-opacity duration-150 hover:opacity-80 disabled:opacity-30 disabled:cursor-not-allowed"
           >
             {submitting
               ? mode === "signin" ? "Signing in…" : "Creating account…"
@@ -186,7 +194,7 @@ const Login = () => {
           </button>
         </form>
 
-        <div className="mt-8 pt-6 border-t border-border text-center">
+        <div className="mt-8  text-center">
           <p className="text-[14px] text-muted-foreground">
             {mode === "signin" ? "Don't have an account? " : "Already have an account? "}
             <button

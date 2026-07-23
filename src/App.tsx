@@ -20,7 +20,7 @@ import Sources from "./pages/Sources";
 import Bookmarks from "./pages/Bookmarks";
 import Login from "./pages/Login";
 import PostsAdmin from "./pages/admin/PostsAdmin";
-import PostEditor from "./pages/admin/PostEditor";
+import Analytics from "./pages/admin/Analytics";
 import NotFound from "./pages/NotFound.tsx";
 import { RouteTracker } from "@/components/analytics/RouteTracker";
 
@@ -44,10 +44,17 @@ const App = () => (
                   <Route path="/tender/:id" element={<TenderDetailPage />} />
                   <Route path="/blog" element={<Blog />} />
                   <Route path="/blog/:slug" element={<BlogPost />} />
+                  {/* Bookmarks/Alerts are regular signed-in pages, not admin
+                      tooling — they stay in the public shell (same nav/footer
+                      as Tenders) rather than the AppLayout dashboard. */}
+                  <Route element={<RequireAuth />}>
+                    <Route path="/bookmarks" element={<Bookmarks />} />
+                    <Route path="/alerts" element={<Alerts />} />
+                  </Route>
                 </Route>
+                {/* AppLayout is the admin dashboard shell — everything under it requires the admin role. */}
                 <Route element={<RequireAuth />}>
                   <Route element={<AppLayout />}>
-                    <Route path="/alerts" element={<Alerts />} />
                     <Route
                       path="/sources"
                       element={
@@ -56,7 +63,15 @@ const App = () => (
                         </RequireRole>
                       }
                     />
-                    <Route path="/bookmarks" element={<Bookmarks />} />
+                    <Route
+                      path="/admin/analytics"
+                      element={
+                        <RequireRole role="admin">
+                          <Analytics />
+                        </RequireRole>
+                      }
+                    />
+                    {/* New/edit posts open as a modal on this page — see PostsAdmin.tsx — rather than a separate route. */}
                     <Route
                       path="/admin/posts"
                       element={
@@ -65,22 +80,12 @@ const App = () => (
                         </RequireRole>
                       }
                     />
-                    <Route
-                      path="/admin/posts/new"
-                      element={
-                        <RequireRole role="admin">
-                          <PostEditor />
-                        </RequireRole>
-                      }
-                    />
-                    <Route
-                      path="/admin/posts/:id"
-                      element={
-                        <RequireRole role="admin">
-                          <PostEditor />
-                        </RequireRole>
-                      }
-                    />
+                    {/* Same Tenders/Bookmarks/Alerts pages as the public routes,
+                        mounted again here so admins can move between them
+                        without leaving the dashboard shell — see nav.ts. */}
+                    <Route path="/admin/tenders" element={<Tenders />} />
+                    <Route path="/admin/bookmarks" element={<Bookmarks />} />
+                    <Route path="/admin/alerts" element={<Alerts />} />
                   </Route>
                 </Route>
                 <Route path="*" element={<NotFound />} />

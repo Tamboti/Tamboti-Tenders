@@ -183,6 +183,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
         content_html: parsed.content_html,
         status: "draft",
         source: "ai",
+        category: "Market Trends",
         author_id: null,
         seo_title: parsed.title,
         seo_description: parsed.excerpt ?? null,
