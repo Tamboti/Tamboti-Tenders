@@ -20,27 +20,11 @@ export default defineConfig(({ mode }) => ({
     },
     dedupe: ["react", "react-dom", "react/jsx-runtime", "react/jsx-dev-runtime", "@tanstack/react-query", "@tanstack/query-core"],
   },
-  build: {
-    rollupOptions: {
-      output: {
-        // Split vendor code into cacheable groups by library, separate from
-        // route chunks (see React.lazy() in App.tsx). Vendor code changes far
-        // less often than app code, so this lets browsers/CDNs cache it across
-        // deploys instead of re-downloading it whenever any page changes.
-        manualChunks(id) {
-          if (!id.includes("node_modules")) return undefined;
-          if (/react-router|\/react\/|\/react-dom\//.test(id)) return "vendor-react";
-          if (id.includes("@radix-ui")) return "vendor-radix";
-          if (id.includes("framer-motion")) return "vendor-motion";
-          if (id.includes("iconoir-react")) return "vendor-icons";
-          if (id.includes("recharts") || id.includes("d3-")) return "vendor-charts";
-          if (id.includes("@supabase")) return "vendor-supabase";
-          if (id.includes("@tanstack")) return "vendor-query";
-          if (id.includes("@tiptap") || id.includes("prosemirror")) return "vendor-editor";
-          if (id.includes("date-fns")) return "vendor-date";
-          return "vendor";
-        },
-      },
-    },
-  },
+  // Chunk-size splitting is handled by route-level React.lazy() in App.tsx
+  // instead of a hand-written manualChunks map — a prior attempt at
+  // regex-grouping vendor code by library broke Rollup's module init
+  // ordering (a "Cannot access 'X' before initialization" crash in
+  // production, invisible in dev since `vite dev` doesn't do this chunking
+  // at all). Dynamic-import-based splitting doesn't have that failure mode:
+  // it follows the real dependency graph instead of an arbitrary regex.
 }));
