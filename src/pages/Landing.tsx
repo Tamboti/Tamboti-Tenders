@@ -294,38 +294,34 @@ export const Landing = () => {
 
           {/* Cards */}
           <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {/* Each card below has its own faint pastel color and unique background SVG shape inspired by the image */}
-            <div className="relative flex h-[280px] sm:min-h-[300px] flex-col rounded-xl p-6 overflow-hidden group border border-transparent" style={{ background: "linear-gradient(135deg, #FFF7EA 85%, #FFE8C7 100%)" }}>
-              
+            {/* Each card has its own pastel identity in light mode and a muted dark equivalent in dark mode — no hardcoded hex, so theme switching just works. */}
+            <div className="relative flex h-[280px] sm:min-h-[300px] flex-col rounded-xl p-6 overflow-hidden group border border-transparent bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-950/50 dark:to-amber-900/30">
               {/* Icon */}
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#FFD488]/20 text-[#B58321] relative z-10 mb-4">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-amber-300/30 text-amber-700 dark:bg-amber-400/10 dark:text-amber-300 relative z-10 mb-4">
                 <Icon0 className="h-8 w-8" />
               </div>
               {/* Title & Body */}
               <div className="mt-auto relative z-10">
-                <h3 className="text-2xl font-semibold text-[#B58321] mb-2">{VALUE_PROPS[0].title}</h3>
-                <p className="text-base  text-[#665100]">{VALUE_PROPS[0].body}</p>
+                <h3 className="text-2xl font-semibold text-amber-800 dark:text-amber-300 mb-2">{VALUE_PROPS[0].title}</h3>
+                <p className="text-base text-amber-900/80 dark:text-amber-100/70">{VALUE_PROPS[0].body}</p>
               </div>
             </div>
-            <div className="relative flex h-[280px] sm:min-h-[300px] flex-col rounded-xl p-6 overflow-hidden group border border-transparent" style={{ background: "linear-gradient(135deg, #ECF4FF 85%, #D4E7FC 100%)" }}>
-              
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#A6CAFF]/20 text-[#20538D] relative z-10 mb-4">
+            <div className="relative flex h-[280px] sm:min-h-[300px] flex-col rounded-xl p-6 overflow-hidden group border border-transparent bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950/50 dark:to-blue-900/30">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-300/30 text-blue-800 dark:bg-blue-400/10 dark:text-blue-300 relative z-10 mb-4">
                 <Icon1 className="h-8 w-8" />
               </div>
               <div className="mt-auto relative z-10">
-                <h3 className="text-2xl font-semibold text-[#20538D] mb-2">{VALUE_PROPS[1].title}</h3>
-                <p className="text-base  text-[#20538D]/80">{VALUE_PROPS[1].body}</p>
+                <h3 className="text-2xl font-semibold text-blue-800 dark:text-blue-300 mb-2">{VALUE_PROPS[1].title}</h3>
+                <p className="text-base text-blue-900/80 dark:text-blue-100/70">{VALUE_PROPS[1].body}</p>
               </div>
             </div>
-            <div className="relative flex h-[280px] sm:min-h-[300px] flex-col rounded-xl p-6 overflow-hidden group border border-transparent" style={{ background: "linear-gradient(135deg, #F6ECFF 85%, #E5DAFF 100%)" }}>
-              {/* Background SVG shape - soft purple wave */}
-              
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#C6A8F6]/20 text-[#6B29AA] relative z-10 mb-4">
+            <div className="relative flex h-[280px] sm:min-h-[300px] flex-col rounded-xl p-6 overflow-hidden group border border-transparent bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950/50 dark:to-purple-900/30">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-purple-300/30 text-purple-800 dark:bg-purple-400/10 dark:text-purple-300 relative z-10 mb-4">
                 <Icon2 className="h-8 w-8" />
               </div>
               <div className="mt-auto relative z-10">
-                <h3 className="text-2xl font-semibold text-[#6B29AA] mb-2">{VALUE_PROPS[2].title}</h3>
-                <p className="text-base  text-[#6B29AA]/80">{VALUE_PROPS[2].body}</p>
+                <h3 className="text-2xl font-semibold text-purple-800 dark:text-purple-300 mb-2">{VALUE_PROPS[2].title}</h3>
+                <p className="text-base text-purple-900/80 dark:text-purple-100/70">{VALUE_PROPS[2].body}</p>
               </div>
             </div>
           </div>
