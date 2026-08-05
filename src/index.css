@@ -95,8 +95,8 @@
 
 @layer base {
   :root {
-    --font-ui: "Source Sans 3", "Noto Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
-    --font-numeric: "Source Sans 3", "Noto Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-ui: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-numeric: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
   }
 
   * {
@@ -117,7 +117,7 @@
     font-variant-numeric: tabular-nums;
   }
 
-  /** Page `<h1>` — Source Sans 3 only, no system serif */
+  /** Page `<h1>` — Inter only, no system serif */
   .page-title {
     @apply text-2xl font-semibold tracking-tight text-foreground;
   }

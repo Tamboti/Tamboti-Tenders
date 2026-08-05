@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { Tender } from "@/lib/types";
 import { TenderDetail } from "@/components/tender/TenderDetail";
@@ -245,7 +246,14 @@ const TenderDetailPage = () => {
       ) : !tender ? (
         <NotFound />
       ) : (
-        <TenderDetail tender={tender} onChanged={refresh} />
+        <motion.div
+          key={tender.id}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <TenderDetail tender={tender} onChanged={refresh} />
+        </motion.div>
       )}
 
     </PageContainer>

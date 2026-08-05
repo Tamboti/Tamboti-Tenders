@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { Seo } from "@/components/seo/Seo";
 import { ArrowLeft } from "@/components/icons";
@@ -66,7 +67,12 @@ const BlogPost = () => {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+      className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8"
+    >
       <Seo
         title={post.seo_title ?? post.title}
         description={post.seo_description ?? post.excerpt ?? undefined}
@@ -111,7 +117,7 @@ const BlogPost = () => {
           dangerouslySetInnerHTML={{ __html: post.content_html }}
         />
       </article>
-    </div>
+    </motion.div>
   );
 };
 

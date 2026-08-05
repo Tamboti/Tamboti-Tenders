@@ -14,15 +14,16 @@ import { visibleNavSections } from "./nav.ts";
 import { Sidebar } from "./Sidebar";
 import { AvatarInitial } from "@/components/AvatarInitial";
 
-// AppLayout (and this TopBar) renders admin routes plus the /admin/* mounts
+// AppLayout (and this TopBar) renders admin routes plus the /portal/* mounts
 // of Tenders/Bookmarks/Alerts — see App.tsx and nav.ts.
 const getRouteLabel = (pathname: string) => {
-  if (pathname.startsWith("/sources")) return "Sources";
+  if (pathname.startsWith("/admin/sources")) return "Sources";
   if (pathname.startsWith("/admin/posts")) return "Blog";
-  if (pathname.startsWith("/admin/tenders")) return "Tenders";
-  if (pathname.startsWith("/admin/bookmarks")) return "Bookmarks";
-  if (pathname.startsWith("/admin/alerts")) return "Alerts";
-  return "Admin";
+  if (pathname.startsWith("/admin/analytics")) return "Analytics";
+  if (pathname.startsWith("/portal/tenders")) return "Tenders";
+  if (pathname.startsWith("/portal/bookmarks")) return "Bookmarks";
+  if (pathname.startsWith("/portal/alerts")) return "Alerts";
+  return "Dashboard";
 };
 
 /* ── TopBar ──────────────────────────────────────────────────────── */

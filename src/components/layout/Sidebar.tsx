@@ -2,77 +2,28 @@ import { NavLink } from "react-router-dom";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { PanelLeft, LogOut } from "lucide-react";
-import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserRole } from "@/hooks/use-user-role";
 import { visibleNavSections } from "./nav.ts";
 import { AvatarInitial } from "@/components/AvatarInitial";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { LOGO_URL } from "@/lib/brand";
+
+const ROLE_LABEL: Record<string, string> = { admin: "Admin", member: "Member" };
 
 type SidebarProps = {
   mobile?: boolean;
   onNavigate?: () => void;
 };
 
-const SunIcon = ({ className }: { className?: string }) => (
-  <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="4" />
-    <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
-  </svg>
-);
-
-const MoonIcon = ({ className }: { className?: string }) => (
-  <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-  </svg>
-);
-
 export const Sidebar = ({ mobile = false, onNavigate }: SidebarProps) => {
   const [collapsed, setCollapsed] = useState(false);
   const { user, signOut } = useAuth();
   const { role, isAdmin } = useUserRole();
-  const { resolvedTheme, setTheme } = useTheme();
   const navSections = visibleNavSections(isAdmin);
 
-  const isDark = resolvedTheme === "dark";
   const compact = mobile ? false : collapsed;
-
-  const ThemeToggle = ({ isCompact }: { isCompact?: boolean }) =>
-    isCompact ? (
-      <button
-        onClick={() => setTheme(isDark ? "light" : "dark")}
-        className="h-8 w-8 flex items-center justify-center rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-sidebar-accent transition-colors"
-        title={isDark ? "Switch to light" : "Switch to dark"}
-      >
-        {isDark
-          ? <SunIcon className="h-4 w-4" />
-          : <MoonIcon className="h-4 w-4" />
-        }
-      </button>
-    ) : (
-      <div className="flex items-center justify-between px-0.5">
-        <div className="flex items-center gap-1.5">
-          {isDark
-            ? <MoonIcon className="h-3.5 w-3.5 text-muted-foreground" />
-            : <SunIcon className="h-3.5 w-3.5 text-muted-foreground" />
-          }
-          <Label
-            htmlFor="theme-switch"
-            className="text-xs text-muted-foreground cursor-pointer select-none"
-          >
-            {isDark ? "Dark mode" : "Light mode"}
-          </Label>
-        </div>
-        <Switch
-          id="theme-switch"
-          checked={isDark}
-          onCheckedChange={(checked) => setTheme(checked ? "dark" : "light")}
-          className="scale-90"
-        />
-      </div>
-    );
 
   const content = (
     <>
@@ -90,7 +41,7 @@ export const Sidebar = ({ mobile = false, onNavigate }: SidebarProps) => {
         >
           {!mobile && (
             <img
-              src="https://luykyredvhhcamcmgahp.supabase.co/storage/v1/object/public/Company%20assets/Gemini_Generated_Image_k92dq5k92dq5k92d-removebg-preview.png"
+              src={LOGO_URL}
               alt="Tender Compass"
               className="h-9 w-9 object-contain shrink-0"
             />
@@ -98,7 +49,7 @@ export const Sidebar = ({ mobile = false, onNavigate }: SidebarProps) => {
 
           {!compact && (
             <h1 className="text-base font-semibold tracking-tight truncate text-foreground">
-              Admin dashboard
+              {isAdmin ? "Admin dashboard" : "My portal"}
             </h1>
           )}
         </div>
@@ -113,7 +64,7 @@ export const Sidebar = ({ mobile = false, onNavigate }: SidebarProps) => {
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="px-3 pt-2 pb-1 text-[11px] font-medium text-muted-foreground"
+                className="px-3 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70"
               >
                 {section.heading}
               </motion.div>
@@ -128,13 +79,14 @@ export const Sidebar = ({ mobile = false, onNavigate }: SidebarProps) => {
                 title={compact ? item.label : undefined}
                 className={({ isActive }) =>
                   cn(
-                    "group flex rounded-md transition-all duration-200",
+                    "group flex rounded-lg text-sm font-medium transition-colors duration-150",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-1 focus-visible:ring-offset-sidebar-background",
                     compact
                       ? "justify-center items-center h-10 w-10 mx-auto"
-                      : "items-center gap-2.5 px-3 py-2 text-sm",
+                      : "items-center gap-2.5 px-3 py-2",
                     isActive
-                      ? "bg-background shadow-sm border border-border text-primary font-medium"
-                      : "text-sidebar-foreground hover:bg-sidebar-accent"
+                      ? "bg-primary text-primary-foreground font-semibold shadow-sm shadow-primary/25"
+                      : "text-sidebar-foreground/90 hover:bg-sidebar-accent hover:text-foreground"
                   )
                 }
               >
@@ -143,7 +95,7 @@ export const Sidebar = ({ mobile = false, onNavigate }: SidebarProps) => {
                     <item.icon
                       className={cn(
                         "h-5 w-5 shrink-0 transition-colors",
-                        isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
+                        isActive ? "text-primary-foreground" : "text-muted-foreground group-hover:text-foreground"
                       )}
                     />
 
@@ -168,56 +120,63 @@ export const Sidebar = ({ mobile = false, onNavigate }: SidebarProps) => {
         ))}
       </nav>
 
-      {/* BOTTOM PANEL */}
-      <div className="px-2 py-2  space-y-2">
-        <div
-          className={cn(
-            "rounded-md bg-background/80 shadow-sm ",
-            compact ? "p-2" : "p-3"
-          )}
-        >
-          {compact ? (
-            <div className="flex flex-col items-center gap-2">
+      {/* BOTTOM PANEL — a single slim row rather than a stacked card, so
+          adding more nav sections over time doesn't eat into the space
+          available for tabs above (this used to be ~3 stacked rows). */}
+      <div className="border-t border-sidebar-border px-2 py-2 space-y-2">
+        {compact ? (
+          <div className="flex flex-col items-center gap-2 p-2">
+            <AvatarInitial
+              label={user?.email}
+              seed={user?.id}
+              className="h-8 w-8"
+              title={user?.email ? `${user.email} · ${role ?? "—"}` : undefined}
+            />
+            <ThemeToggle className="h-8 w-8 shrink-0" />
+            <button
+              onClick={() => {
+                void signOut();
+                onNavigate?.();
+              }}
+              className="h-8 w-8 shrink-0 flex items-center justify-center rounded-md text-destructive bg-destructive/10 hover:bg-destructive/15 transition-colors"
+              aria-label="Sign out"
+              title="Sign out"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
+          </div>
+        ) : (
+          <>
+            <div className="flex items-center gap-2 px-1 py-1">
               <AvatarInitial
                 label={user?.email}
                 seed={user?.id}
-                className="h-8 w-8"
+                className="shrink-0"
+                title={user?.email ? `${user.email} · ${role ?? "—"}` : undefined}
               />
-              <ThemeToggle isCompact />
-            </div>
-          ) : (
-            <div className="space-y-2.5">
-              <div className="flex items-center gap-2 min-w-0">
-                <AvatarInitial
-                  label={user?.email}
-                  seed={user?.id}
-                  className="shrink-0"
-                />
-                <div className="min-w-0">
-                  <p className="truncate text-xs font-medium text-foreground">
-                    {user?.email ?? "No account"}
-                  </p>
-                  <p className="text-[11px] text-muted-foreground">
-                    Role: {role ?? "—"}
-                  </p>
-                </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-xs font-medium text-foreground">
+                  {user?.email ?? "No account"}
+                </p>
+                {role && (
+                  <p className="truncate text-[11px] text-muted-foreground">{ROLE_LABEL[role] ?? role}</p>
+                )}
               </div>
-
-              <ThemeToggle />
-
-              <button
-                onClick={() => {
-                  void signOut();
-                  onNavigate?.();
-                }}
-                className="w-full h-8 flex items-center justify-center gap-1.5 rounded-md border border-border text-xs text-muted-foreground hover:text-foreground hover:bg-sidebar-accent transition-colors"
-              >
-                <LogOut className="h-4 w-4" />
-                Sign out
-              </button>
+              <ThemeToggle className="h-8 w-8 shrink-0" />
             </div>
-          )}
-        </div>
+
+            <button
+              onClick={() => {
+                void signOut();
+                onNavigate?.();
+              }}
+              className="flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-destructive bg-destructive/10 hover:bg-destructive/15 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/40 focus-visible:ring-offset-1 focus-visible:ring-offset-sidebar-background"
+            >
+              <LogOut className="h-4 w-4" />
+              Sign out
+            </button>
+          </>
+        )}
 
         {/* COLLAPSE BUTTON */}
         {!mobile && (
@@ -253,8 +212,8 @@ export const Sidebar = ({ mobile = false, onNavigate }: SidebarProps) => {
   return (
     <motion.aside
       animate={{ width: collapsed ? 72 : 240 }}
-      transition={{ type: "spring", stiffness: 260, damping: 30 }}
-      className="hidden h-screen flex-col overflow-hidden bg-transparent py-4 md:flex"
+      transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
+      className="hidden h-screen flex-col overflow-hidden border-r border-sidebar-border bg-sidebar-background py-2 md:flex"
     >
       {content}
     </motion.aside>

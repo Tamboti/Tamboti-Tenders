@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
@@ -11,6 +11,7 @@ import { PublicLayout } from "@/components/layout/PublicLayout";
 import RequireAuth from "@/components/auth/RequireAuth";
 import { RequireRole } from "@/components/auth/RequireRole";
 import Landing from "./pages/Landing";
+import Pricing from "./pages/Pricing";
 import Tenders from "./pages/Tenders";
 import TenderDetailPage from "./pages/TenderDetailPage";
 import Blog from "./pages/Blog";
@@ -18,6 +19,7 @@ import BlogPost from "./pages/BlogPost";
 import Alerts from "./pages/Alerts";
 import Sources from "./pages/Sources";
 import Bookmarks from "./pages/Bookmarks";
+import Billing from "./pages/Billing";
 import Login from "./pages/Login";
 import PostsAdmin from "./pages/admin/PostsAdmin";
 import Analytics from "./pages/admin/Analytics";
@@ -29,7 +31,7 @@ const queryClient = new QueryClient();
 const App = () => (
   <HelmetProvider>
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+      <ThemeProvider attribute="class" defaultTheme="light">
         <TooltipProvider>
           <Toaster />
           <Sonner />
@@ -40,23 +42,26 @@ const App = () => (
                 <Route path="/login" element={<Login />} />
                 <Route element={<PublicLayout />}>
                   <Route path="/" element={<Landing />} />
+                  <Route path="/pricing" element={<Pricing />} />
                   <Route path="/tenders" element={<Tenders />} />
                   <Route path="/tender/:id" element={<TenderDetailPage />} />
                   <Route path="/blog" element={<Blog />} />
                   <Route path="/blog/:slug" element={<BlogPost />} />
-                  {/* Bookmarks/Alerts are regular signed-in pages, not admin
-                      tooling — they stay in the public shell (same nav/footer
-                      as Tenders) rather than the AppLayout dashboard. */}
-                  <Route element={<RequireAuth />}>
-                    <Route path="/bookmarks" element={<Bookmarks />} />
-                    <Route path="/alerts" element={<Alerts />} />
-                  </Route>
+                  {/* Old unprefixed/public-shell URLs — redirect so
+                      bookmarked/shared links still land correctly. */}
+                  <Route path="/bookmarks" element={<Navigate to="/portal/bookmarks" replace />} />
+                  <Route path="/alerts" element={<Navigate to="/portal/alerts" replace />} />
+                  <Route path="/sources" element={<Navigate to="/admin/sources" replace />} />
                 </Route>
-                {/* AppLayout is the admin dashboard shell — everything under it requires the admin role. */}
+                {/* AppLayout is the shared dashboard shell for both members and
+                    admins — Sidebar (nav.ts) filters admin-only sections out
+                    for non-admins, so /portal/* works for any signed-in user
+                    while /admin/sources, /admin/analytics and /admin/posts
+                    stay admin-gated (consistent prefix, no bare routes). */}
                 <Route element={<RequireAuth />}>
                   <Route element={<AppLayout />}>
                     <Route
-                      path="/sources"
+                      path="/admin/sources"
                       element={
                         <RequireRole role="admin">
                           <Sources />
@@ -80,12 +85,13 @@ const App = () => (
                         </RequireRole>
                       }
                     />
-                    {/* Same Tenders/Bookmarks/Alerts pages as the public routes,
-                        mounted again here so admins can move between them
-                        without leaving the dashboard shell — see nav.ts. */}
-                    <Route path="/admin/tenders" element={<Tenders />} />
-                    <Route path="/admin/bookmarks" element={<Bookmarks />} />
-                    <Route path="/admin/alerts" element={<Alerts />} />
+                    {/* Member portal — same pages any signed-in user (member
+                        or admin) reaches from the "Portal"/"Dashboard" button
+                        in PublicNav. See nav.ts for the sidebar entries. */}
+                    <Route path="/portal/tenders" element={<Tenders />} />
+                    <Route path="/portal/bookmarks" element={<Bookmarks />} />
+                    <Route path="/portal/alerts" element={<Alerts />} />
+                    <Route path="/portal/billing" element={<Billing />} />
                   </Route>
                 </Route>
                 <Route path="*" element={<NotFound />} />

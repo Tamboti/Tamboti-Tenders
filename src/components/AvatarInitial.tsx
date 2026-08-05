@@ -21,10 +21,12 @@ export const AvatarInitial = ({
   label,
   seed,
   className,
+  title,
 }: {
   label: string | null | undefined;
   seed?: string;
   className?: string;
+  title?: string;
 }) => {
   const safe = (label ?? "").trim();
   const initial = (safe[0] ?? "?").toUpperCase();
@@ -38,6 +40,7 @@ export const AvatarInitial = ({
         className
       )}
       style={{ background: grad }}
+      title={title}
       aria-hidden="true"
     >
       {/* glass sheen overlay */}

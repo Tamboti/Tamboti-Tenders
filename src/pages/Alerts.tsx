@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSubscription } from "@/hooks/use-subscription";
+import { FREE_ALERT_LIMIT, isPlanLimitError } from "@/lib/plan";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -578,6 +581,8 @@ function AlertCard({
 
 const Alerts = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const { isPro } = useSubscription();
   const [loading, setLoading] = useState(true);
   const [alerts, setAlerts] = useState<AlertPreference[]>([]);
   const [countries, setCountries] = useState<string[]>([]);
@@ -628,7 +633,16 @@ const Alerts = () => {
 
   useEffect(() => { void load(); }, [user?.id]);
 
-  const openCreate = () => { setEditTarget(null); setModalOpen(true); };
+  const openCreate = () => {
+    if (!isPro && alerts.length >= FREE_ALERT_LIMIT) {
+      toast.error(`Free plan limit reached — ${FREE_ALERT_LIMIT} alert. Upgrade to Pro for unlimited.`, {
+        action: { label: "Upgrade", onClick: () => navigate("/pricing") },
+      });
+      return;
+    }
+    setEditTarget(null);
+    setModalOpen(true);
+  };
   const openEdit = (a: AlertPreference) => { setEditTarget(a); setModalOpen(true); };
   const closeModal = () => { setModalOpen(false); setEditTarget(null); };
 
@@ -682,7 +696,16 @@ const Alerts = () => {
         .select("*")
         .single();
       setSaving(false);
-      if (error) return toast.error(handleDbError(error));
+      if (error) {
+        if (isPlanLimitError(error)) {
+          closeModal();
+          toast.error(`Free plan limit reached — ${FREE_ALERT_LIMIT} alert. Upgrade to Pro for unlimited.`, {
+            action: { label: "Upgrade", onClick: () => navigate("/pricing") },
+          });
+          return;
+        }
+        return toast.error(handleDbError(error));
+      }
       setAlerts((prev) => [data as AlertPreference, ...prev]);
       toast.success("Alert created");
       trackEvent("alert_created");

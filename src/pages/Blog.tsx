@@ -1,11 +1,13 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { handleDbError } from "@/lib/dbError";
 import { Seo } from "@/components/seo/Seo";
 import { cn } from "@/lib/utils";
 import { POST_CATEGORIES } from "@/lib/blogCategories";
+import { fadeUp, staggerContainer } from "@/lib/motion";
 
 type PostSummary = {
   slug: string;
@@ -51,13 +53,18 @@ const Blog = () => {
       />
 
       {/* Hero */}
-      <div className="mx-auto max-w-3xl px-4 pt-16 pb-10 text-center sm:px-6 lg:px-8">
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+        className="mx-auto max-w-3xl px-4 pt-16 pb-10 text-center sm:px-6 lg:px-8"
+      >
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">Our blog</p>
-        <h1 className="mt-3 text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+        <h1 className="mt-3 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
           Procurement market trends and tender insights across Africa
         </h1>
-        
-      </div>
+
+      </motion.div>
 
       {/* Category filter */}
       <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-center gap-2 px-4 pb-10 sm:px-6 lg:px-8">
@@ -91,10 +98,17 @@ const Blog = () => {
             ))}
           </div>
         ) : filtered.length > 0 ? (
-          <div className="grid grid-cols-1 gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
+          <motion.div
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true, amount: 0.1 }}
+            variants={staggerContainer}
+            className="grid grid-cols-1 gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-3"
+          >
             {filtered.map((post) => (
-              <button
+              <motion.button
                 key={post.slug}
+                variants={fadeUp}
                 type="button"
                 onClick={() => navigate(`/blog/${post.slug}`)}
                 className="group flex flex-col text-left"
@@ -119,9 +133,9 @@ const Blog = () => {
                 {post.excerpt && (
                   <p className="mt-1.5 text-sm text-muted-foreground line-clamp-2">{post.excerpt}</p>
                 )}
-              </button>
+              </motion.button>
             ))}
-          </div>
+          </motion.div>
         ) : (
           <p className="py-16 text-center text-sm text-muted-foreground">
             {activeCategory === "All"

@@ -10,12 +10,12 @@ import { cn } from "@/lib/utils";
 
 const MEMBER_ITEMS = [
   { to: "/tenders", label: "Tenders", icon: Search },
-  { to: "/bookmarks", label: "Saved", icon: Bookmark },
-  { to: "/alerts", label: "Alerts", icon: Bell },
+  { to: "/portal/bookmarks", label: "Saved", icon: Bookmark },
+  { to: "/portal/alerts", label: "Alerts", icon: Bell },
 ];
 
 // Admins don't get the member-only Saved/Alerts tabs here — they reach their
-// own bookmarks/alerts from the admin dashboard sidebar instead (nav.ts).
+// own bookmarks/alerts from the portal sidebar instead (nav.ts).
 const ADMIN_ITEMS = [{ to: "/tenders", label: "Tenders", icon: Search }];
 
 // Surfaces Bookmarks/Alerts as a persistent tab bar for logged-in mobile
@@ -84,7 +84,7 @@ export const PublicBottomNav = () => {
                 className="w-full gap-2"
                 onClick={() => {
                   setAccountOpen(false);
-                  navigate("/sources");
+                  navigate("/admin/sources");
                 }}
               >
                 <Globe className="h-4 w-4" />

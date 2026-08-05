@@ -1,11 +1,15 @@
 import type React from "react";
-import { Globe, Pencil, Search, Bookmark, Bell, TrendingUp } from "lucide-react";
+import { Globe, Pencil, Search, Bookmark, Bell, TrendingUp, CreditCard } from "lucide-react";
 
 export type NavItem = {
   to: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   adminOnly?: boolean;
+  // Opposite of adminOnly — for things that only make sense for a member's
+  // own account (e.g. subscription billing). Admins don't pay for Pro, so
+  // showing them a personal billing page is just noise.
+  hiddenForAdmin?: boolean;
 };
 
 export type NavSection = {
@@ -13,20 +17,22 @@ export type NavSection = {
   items: NavItem[];
 };
 
-// This nav backs AppLayout, the admin dashboard shell. Tenders/Bookmarks/
-// Alerts are hidden from the public top nav for admins (see PublicNav.tsx),
-// so they're surfaced here instead, pointed at the /admin/* mounts of those
-// same pages (App.tsx) so moving between them never leaves the dashboard shell.
+// This nav backs AppLayout, the shared portal/admin dashboard shell.
+// Tenders/Bookmarks/Alerts aren't in the public top nav at all (see
+// PublicNav.tsx) — every signed-in user reaches them here, at the
+// /portal/* mounts of those same pages (App.tsx). Admin-only tooling lives
+// under /admin/* (consistent with /portal/* — no bare, unprefixed routes).
 export const NAV_SECTIONS: NavSection[] = [
   {
     heading: "Personal",
     items: [
-      { to: "/admin/tenders", label: "Tenders", icon: Search },
-      { to: "/admin/bookmarks", label: "Bookmarks", icon: Bookmark },
-      { to: "/admin/alerts", label: "Alerts", icon: Bell },
+      { to: "/portal/tenders", label: "Tenders", icon: Search },
+      { to: "/portal/bookmarks", label: "Bookmarks", icon: Bookmark },
+      { to: "/portal/alerts", label: "Alerts", icon: Bell },
+      { to: "/portal/billing", label: "Billing", icon: CreditCard, hiddenForAdmin: true },
     ],
   },
-  { heading: "Scrapers", items: [{ to: "/sources", label: "Sources", icon: Globe, adminOnly: true }] },
+  { heading: "Scrapers", items: [{ to: "/admin/sources", label: "Sources", icon: Globe, adminOnly: true }] },
   {
     heading: "Insights",
     items: [{ to: "/admin/analytics", label: "Analytics", icon: TrendingUp, adminOnly: true }],
@@ -38,6 +44,8 @@ export const NAV_SECTIONS: NavSection[] = [
 export const visibleNavSections = (isAdmin: boolean): NavSection[] =>
   NAV_SECTIONS.map((section) => ({
     ...section,
-    items: section.items.filter((item) => !item.adminOnly || isAdmin),
+    items: section.items.filter(
+      (item) => (!item.adminOnly || isAdmin) && !(item.hiddenForAdmin && isAdmin)
+    ),
   })).filter((section) => section.items.length > 0);
 

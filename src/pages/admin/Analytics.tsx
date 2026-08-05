@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Users, Bookmark, Bell, Eye } from "lucide-react";
+import { Users, Bookmark, Bell, Eye, CreditCard, DollarSign, AlertTriangle, TrendingUp as TrendingUpIcon } from "lucide-react";
 import {
   LineChart,
   Line,
@@ -19,6 +19,8 @@ import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { StatTile } from "@/components/analytics/StatTile";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { PRO_PRICE_USD } from "@/lib/plan";
+import { formatCurrency } from "@/lib/format";
 
 const RANGE_OPTIONS = [
   { days: 7, label: "7 days" },
@@ -168,7 +170,7 @@ export default function Analytics() {
     queryKey: ["analytics-totals", adminIds],
     enabled: adminIdsQuery.isSuccess,
     queryFn: async () => {
-      const [users, bookmarks, activeAlerts, visitors] = await Promise.all([
+      const [users, bookmarks, activeAlerts, visitors, subscriptions] = await Promise.all([
         supabase.from("user_profiles").select("id", { count: "exact", head: true }).neq("role", "admin"),
         excludingAdmins(supabase.from("tender_bookmarks").select("user_id", { count: "exact", head: true }), adminIds),
         excludingAdmins(
@@ -176,15 +178,22 @@ export default function Analytics() {
           adminIds
         ),
         supabase.from("site_visits").select("device_id"),
+        excludingAdmins(supabase.from("subscriptions").select("user_id, status"), adminIds),
       ]);
-      for (const r of [users, bookmarks, activeAlerts, visitors]) {
+      for (const r of [users, bookmarks, activeAlerts, visitors, subscriptions]) {
         if (r.error) throw new Error(handleDbError(r.error));
       }
+      const subRows = (subscriptions.data ?? []) as { user_id: string; status: string }[];
+      const proSubscribers = subRows.filter((r) => r.status === "active" || r.status === "trialing").length;
+      const pastDue = subRows.filter((r) => r.status === "past_due").length;
       return {
         users: users.count ?? 0,
         bookmarks: bookmarks.count ?? 0,
         activeAlerts: activeAlerts.count ?? 0,
         uniqueVisitors: new Set((visitors.data ?? []).map((r) => r.device_id)).size,
+        proSubscribers,
+        pastDue,
+        mrr: proSubscribers * PRO_PRICE_USD,
       };
     },
     staleTime: 60_000,
@@ -198,7 +207,7 @@ export default function Analytics() {
     queryKey: ["analytics-range", rangeDays, adminIds],
     enabled: adminIdsQuery.isSuccess,
     queryFn: async () => {
-      const [signups, bookmarks, alertsSent, visits] = await Promise.all([
+      const [signups, bookmarks, alertsSent, visits, newSubscriptions] = await Promise.all([
         supabase.from("user_profiles").select("created_at").neq("role", "admin").gte("created_at", sinceIso),
         excludingAdmins(
           supabase
@@ -212,8 +221,12 @@ export default function Analytics() {
           .select("sent_at, alert_preferences(user_id)")
           .gte("sent_at", sinceIso),
         supabase.from("site_visits").select("visited_on").gte("visited_on", sinceDate),
+        excludingAdmins(
+          supabase.from("subscriptions").select("user_id, created_at").gte("created_at", sinceIso),
+          adminIds
+        ),
       ]);
-      for (const r of [signups, bookmarks, alertsSent, visits]) {
+      for (const r of [signups, bookmarks, alertsSent, visits, newSubscriptions]) {
         if (r.error) throw new Error(handleDbError(r.error));
       }
       const adminSet = new Set(adminIds);
@@ -234,6 +247,7 @@ export default function Analytics() {
           (r) => !r.alert_preferences || !adminSet.has(r.alert_preferences.user_id)
         ),
         visits: visits.data ?? [],
+        newSubscriptions: (newSubscriptions.data ?? []) as { user_id: string; created_at: string }[],
       };
     },
     staleTime: 60_000,
@@ -254,6 +268,10 @@ export default function Analytics() {
   );
   const visitsTrend = useMemo(
     () => bucketByDay((rangeQuery.data?.visits ?? []).map((r) => r.visited_on), rangeDays),
+    [rangeQuery.data, rangeDays]
+  );
+  const newSubscriptionsTrend = useMemo(
+    () => bucketByDay((rangeQuery.data?.newSubscriptions ?? []).map((r) => r.created_at), rangeDays),
     [rangeQuery.data, rangeDays]
   );
 
@@ -302,6 +320,29 @@ export default function Analytics() {
         <StatTile label="Unique visitors" value={totalsQuery.data?.uniqueVisitors ?? "—"} icon={Eye} />
       </div>
 
+      {/* Revenue — Pro subscriber counts and MRR, same all-time scope as above */}
+      <div>
+        <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-2">Revenue</h2>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <StatTile label="Pro subscribers" value={totalsQuery.data?.proSubscribers ?? "—"} icon={CreditCard} />
+          <StatTile
+            label="MRR"
+            value={totalsQuery.data ? formatCurrency(totalsQuery.data.mrr) : "—"}
+            icon={DollarSign}
+          />
+          <StatTile label="Past due" value={totalsQuery.data?.pastDue ?? "—"} icon={AlertTriangle} />
+          <StatTile
+            label="Free → Pro conversion"
+            value={
+              totalsQuery.data && totalsQuery.data.users > 0
+                ? `${((totalsQuery.data.proSubscribers / totalsQuery.data.users) * 100).toFixed(1)}%`
+                : "—"
+            }
+            icon={TrendingUpIcon}
+          />
+        </div>
+      </div>
+
       {/* Date range — scopes every chart below it */}
       <div className="flex items-center gap-1.5">
         {RANGE_OPTIONS.map((opt) => (
@@ -333,6 +374,9 @@ export default function Analytics() {
         </ChartCard>
         <ChartCard title="Alerts sent" subtitle={`Alert emails delivered, last ${rangeDays} days`}>
           <TrendChart data={alertsSentTrend} />
+        </ChartCard>
+        <ChartCard title="New subscriptions" subtitle={`New Pro subscriptions started, last ${rangeDays} days`}>
+          <TrendChart data={newSubscriptionsTrend} />
         </ChartCard>
         <ChartCard title="Most-bookmarked categories" subtitle={`Last ${rangeDays} days`}>
           <RankingChart data={bookmarkedCategories} />

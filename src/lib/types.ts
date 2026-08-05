@@ -12,7 +12,9 @@ export const WORKFLOW_STATUSES: WorkflowStatus[] = [
 ];
 
 export const STATUS_COLORS: Record<string, string> = {
-  New: "bg-accent/10 text-accent border-accent/20",
+  // "accent" is a neutral near-white hover tint (see index.css), not a
+  // visible text color — using it here made the "New" badge unreadable.
+  New: "bg-primary/10 text-primary border-primary/20",
   Review: "bg-warning/10 text-warning border-warning/20",
   Submitted: "bg-purple-500/10 text-purple-600 border-purple-500/20",
   Awarded: "bg-success/10 text-success border-success/20",

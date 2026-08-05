@@ -1,10 +1,11 @@
 import { ComponentType, Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useCountryReference } from "@/hooks/use-country-reference";
-import { Tender, WORKFLOW_STATUSES } from "@/lib/types";
+import { Tender } from "@/lib/types";
 import { TENDER_LIST_COLUMNS } from "@/lib/tenderLanguage";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -62,14 +63,14 @@ import {
   ChevronDown,
   Check,
   Layers,
-  Circle,
   Calendar,
 } from "@/components/icons";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { handleDbError } from "@/lib/dbError";
+import { isPlanLimitError } from "@/lib/plan";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { motion, AnimatePresence } from "framer-motion";
+import {  AnimatePresence } from "framer-motion";
 import {
   Table,
   TableBody,
@@ -84,7 +85,12 @@ import { Seo } from "@/components/seo/Seo";
 import { trackEvent } from "@/lib/analytics";
 
 const PAGE_SIZE = 100;
-type DeadlineScope = "active" | "past" | "all";
+// "7d" is a closing-soon preset (deadline >= today AND within 7 days) — the
+// urgent end. "30d"/"90d" are the opposite: tenders with MORE than that many
+// days of runway (deadline > today+N, no upper bound) — for finding tenders
+// that aren't closing soon, not a tighter window on top of "active".
+type DeadlineScope = "active" | "past" | "all" | "7d" | "30d" | "90d";
+const DEADLINE_WINDOW_DAYS: Record<"30d" | "90d", number> = { "30d": 30, "90d": 90 };
 
 const MotionTableRow = motion(TableRow);
 
@@ -95,6 +101,31 @@ const getTodayIsoDate = () => {
   const day = String(now.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 };
+
+const addDaysIso = (days: number) => {
+  const now = new Date();
+  now.setDate(now.getDate() + days);
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+// websearch_to_tsquery (the previous `type: "websearch"` option) only matches
+// whole stemmed words, so "renovat" never matches "renovation" — the same
+// gap the category filter doesn't have, since that's just a client-side
+// `.includes()` over a short in-memory list. There's no "prefix" mode on
+// .textSearch(), so this builds a raw to_tsquery string by hand: strip each
+// word to letters/digits (to_tsquery would otherwise choke on stray
+// `&`/`|`/`:` etc.) and suffix it with `:*`, Postgres's prefix-match
+// operator, ANDing multiple words together like websearch did.
+const toPrefixTsQuery = (sanitized: string) =>
+  sanitized
+    .split(" ")
+    .map((w) => w.replace(/[^\p{L}\p{N}]/gu, ""))
+    .filter(Boolean)
+    .map((w) => `${w}:*`)
+    .join(" & ");
 
 const Stat = ({
   label,
@@ -332,7 +363,6 @@ const Tenders = () => {
   const [country, setCountry] = useState<string>(() => searchParams.get("country") ?? "all");
   const [subregion, setSubregion] = useState<string>(() => searchParams.get("subregion") ?? "all");
   const [category, setCategory] = useState<string>(() => searchParams.get("category") ?? "all");
-  const [status, setStatus] = useState<string>(() => searchParams.get("status") ?? "all");
   const [deadlineScope, setDeadlineScope] = useState<DeadlineScope>(
     () => (searchParams.get("deadline") as DeadlineScope | null) ?? "active"
   );
@@ -453,41 +483,51 @@ const Tenders = () => {
   }, [search]);
 
   const todayIso = useMemo(() => getTodayIsoDate(), []);
-  const closingSoonMaxIso = useMemo(() => {
-    const now = new Date();
-    now.setDate(now.getDate() + 7);
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, "0");
-    const day = String(now.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  }, []);
+  const closingSoonMaxIso = useMemo(() => addDaysIso(7), []);
 
   const sanitizeSearch = (raw: string) => raw.trim().replace(/\s+/g, " ").slice(0, 100);
 
-  const applyCommonFilters = (query: any) => {
+  // Shared by applyCommonFilters and the facets query below, so the two
+  // "7d"/"30d"/"90d" windows can't drift out of sync between them.
+  const applyDeadlineScope = (query: any, scope: DeadlineScope) => {
+    if (scope === "active") return query.gte("deadline", todayIso);
+    if (scope === "past") return query.lt("deadline", todayIso);
+    if (scope === "all") return query;
+    if (scope === "7d") return query.gte("deadline", todayIso).lte("deadline", addDaysIso(7));
+    // "30d"/"90d" — tenders with more than that many days of runway before
+    // their deadline, i.e. NOT closing soon. Strictly beyond the window, no
+    // upper bound (see the DeadlineScope comment above).
+    return query.gt("deadline", addDaysIso(DEADLINE_WINDOW_DAYS[scope]));
+  };
+
+  // Every filter except the deadline scope — split out so the "Closing
+  // soon" stat (a fixed 7-day window) can reuse search/country/etc without
+  // also going through applyDeadlineScope, which would otherwise stack a
+  // second, redundant deadline range on top of its own.
+  const applyBaseFilters = (query: any) => {
     // Africa is the default scope everywhere tenders are listed. NULL
     // continent means the country spelling isn't in country_reference yet —
     // that's a data-quality gap, not an out-of-scope tender, so it stays
     // visible rather than silently disappearing.
     let next = query.eq("enrichment_status", "enriched").or("continent.eq.Africa,continent.is.null");
     const s = sanitizeSearch(debouncedSearch);
-    if (s) {
+    const tsQuery = s ? toPrefixTsQuery(s) : "";
+    if (tsQuery) {
       // Hits the generated search_vector (coalesce(title_en, title) +
       // description + procuring_entity), so an English query still matches
       // tenders published in another language.
-      next = next.textSearch("search_vector", s, { config: "simple", type: "websearch" });
+      next = next.textSearch("search_vector", tsQuery, { config: "simple" });
     }
     if (country !== "all") next = next.eq("country_iso2", country);
     if (subregion !== "all") next = next.eq("subregion", subregion);
     if (category !== "all") next = next.eq("category", category);
-    if (status !== "all") next = next.eq("workflow_status", status);
-    if (deadlineScope === "active") next = next.gte("deadline", todayIso);
-    if (deadlineScope === "past") next = next.lt("deadline", todayIso);
     return next;
   };
 
+  const applyCommonFilters = (query: any) => applyDeadlineScope(applyBaseFilters(query), deadlineScope);
+
   const tendersQuery = useQuery({
-    queryKey: ["tenders-list", page, debouncedSearch, country, subregion, category, status, deadlineScope],
+    queryKey: ["tenders-list", page, debouncedSearch, country, subregion, category, deadlineScope],
     queryFn: async () => {
       let query = applyCommonFilters(
         supabase
@@ -507,43 +547,38 @@ const Tenders = () => {
   });
 
   const facetsQuery = useQuery({
-    queryKey: ["tenders-facets", debouncedSearch, country, subregion, category, status, deadlineScope],
+    queryKey: ["tenders-facets", debouncedSearch, country, subregion, category, deadlineScope],
     queryFn: async () => {
       const s = sanitizeSearch(debouncedSearch);
+      const tsQuery = s ? toPrefixTsQuery(s) : "";
 
       let countriesQuery = supabase
         .from("tenders")
         .select("country_iso2")
         .eq("enrichment_status", "enriched")
         .or("continent.eq.Africa,continent.is.null");
-      if (s) {
-        countriesQuery = countriesQuery.textSearch("search_vector", s, {
+      if (tsQuery) {
+        countriesQuery = countriesQuery.textSearch("search_vector", tsQuery, {
           config: "simple",
-          type: "websearch",
         });
       }
       if (subregion !== "all") countriesQuery = countriesQuery.eq("subregion", subregion);
       if (category !== "all") countriesQuery = countriesQuery.eq("category", category);
-      if (status !== "all") countriesQuery = countriesQuery.eq("workflow_status", status);
-      if (deadlineScope === "active") countriesQuery = countriesQuery.gte("deadline", todayIso);
-      if (deadlineScope === "past") countriesQuery = countriesQuery.lt("deadline", todayIso);
+      countriesQuery = applyDeadlineScope(countriesQuery, deadlineScope);
 
       let categoriesQuery = supabase
         .from("tenders")
         .select("category")
         .eq("enrichment_status", "enriched")
         .or("continent.eq.Africa,continent.is.null");
-      if (s) {
-        categoriesQuery = categoriesQuery.textSearch("search_vector", s, {
+      if (tsQuery) {
+        categoriesQuery = categoriesQuery.textSearch("search_vector", tsQuery, {
           config: "simple",
-          type: "websearch",
         });
       }
       if (country !== "all") categoriesQuery = categoriesQuery.eq("country_iso2", country);
       if (subregion !== "all") categoriesQuery = categoriesQuery.eq("subregion", subregion);
-      if (status !== "all") categoriesQuery = categoriesQuery.eq("workflow_status", status);
-      if (deadlineScope === "active") categoriesQuery = categoriesQuery.gte("deadline", todayIso);
-      if (deadlineScope === "past") categoriesQuery = categoriesQuery.lt("deadline", todayIso);
+      categoriesQuery = applyDeadlineScope(categoriesQuery, deadlineScope);
 
       const [
         { data: countriesData, error: countriesError },
@@ -608,7 +643,7 @@ const Tenders = () => {
       return;
     }
     setPage(0);
-  }, [search, country, subregion, category, status, deadlineScope]);
+  }, [search, country, subregion, category, deadlineScope]);
 
   // Mirror filters/search/page into the URL so they survive navigating away
   // (e.g. into a tender's detail page) and back.
@@ -618,19 +653,21 @@ const Tenders = () => {
     if (country !== "all") params.country = country;
     if (subregion !== "all") params.subregion = subregion;
     if (category !== "all") params.category = category;
-    if (status !== "all") params.status = status;
     if (deadlineScope !== "active") params.deadline = deadlineScope;
     if (page > 0) params.page = String(page);
     setSearchParams(params, { replace: true });
-  }, [debouncedSearch, country, subregion, category, status, deadlineScope, page, setSearchParams]);
+  }, [debouncedSearch, country, subregion, category, deadlineScope, page, setSearchParams]);
 
   const statsQuery = useQuery({
-    queryKey: ["tenders-stats", debouncedSearch, country, subregion, category, status, deadlineScope],
+    queryKey: ["tenders-stats", debouncedSearch, country, subregion, category, deadlineScope],
     queryFn: async () => {
       const totalQuery = applyCommonFilters(
         supabase.from("tenders").select("id", { count: "exact", head: true })
       );
-      const closingSoonQuery = applyCommonFilters(
+      // Deliberately not routed through applyCommonFilters/applyDeadlineScope
+      // — "Closing soon" is always a fixed 7-day window regardless of which
+      // deadline scope the user has selected in the filter bar.
+      const closingSoonQuery = applyBaseFilters(
         supabase
           .from("tenders")
           .select("id", { count: "exact", head: true })
@@ -676,7 +713,15 @@ const Tenders = () => {
     } else {
       const { error } = await supabase
         .from("tender_bookmarks").insert({ user_id: uid, tender_id: tenderId });
-      if (error) return toast.error(handleDbError(error));
+      if (error) {
+        if (isPlanLimitError(error)) {
+          toast.error("Free plan limit reached — up to 5 bookmarks. Upgrade to Pro for unlimited.", {
+            action: { label: "Upgrade", onClick: () => navigate("/pricing") },
+          });
+          return;
+        }
+        return toast.error(handleDbError(error));
+      }
       setBookmarks((b) => {
         const n = new Set(b).add(tenderId);
         queryClient.setQueryData(["tender-bookmarks", uid], n);
@@ -705,12 +750,22 @@ const Tenders = () => {
   const statsTotal = statsQuery.data?.total ?? total;
   const urgentCount = statsQuery.data?.closingSoon ?? 0;
 
+  const deadlineOptions: FilterOption[] = [
+    { value: "active", label: "Active deadlines" },
+    { value: "7d", label: "Closing within 7 days" },
+    { value: "30d", label: "More than 30 days out" },
+    { value: "90d", label: "More than 90 days out" },
+    { value: "past", label: "Past deadlines" },
+    { value: "all", label: "All deadlines" },
+  ];
+  const deadlineScopeLabel = (scope: DeadlineScope) =>
+    deadlineOptions.find((o) => o.value === scope)?.label ?? scope;
+
   const activeFilters = [
     country !== "all" && (byIso2.get(country)?.canonical_name ?? country),
     subregion !== "all" && subregion,
     category !== "all" && category,
-    status !== "all" && status,
-    deadlineScope !== "active" && (deadlineScope === "past" ? "Past deadline" : "All deadlines"),
+    deadlineScope !== "active" && deadlineScopeLabel(deadlineScope),
   ].filter(Boolean) as string[];
 
   const countryOptions: FilterOption[] = useMemo(
@@ -731,17 +786,6 @@ const Tenders = () => {
   const categoryOptions: FilterOption[] = [
     { value: "all", label: "All categories" },
     ...categories.map((c) => ({ value: c, label: c })),
-  ];
-
-  const statusOptions: FilterOption[] = [
-    { value: "all", label: "All statuses" },
-    ...WORKFLOW_STATUSES.map((s) => ({ value: s, label: s })),
-  ];
-
-  const deadlineOptions: FilterOption[] = [
-    { value: "active", label: "Active deadlines" },
-    { value: "past", label: "Past deadlines" },
-    { value: "all", label: "All deadlines" },
   ];
 
   /* ── Shared filter controls ── */
@@ -774,14 +818,6 @@ const Tenders = () => {
         searchable
       />
       <FilterDropdown
-        label="Status"
-        value={status}
-        options={statusOptions}
-        onChange={setStatus}
-        icon={Circle}
-        compact={compact}
-      />
-      <FilterDropdown
         label="Deadline"
         value={deadlineScope}
         defaultValue="active"
@@ -803,7 +839,12 @@ const Tenders = () => {
       <PageContainer className="space-y-6 sm:space-y-8">
 
         {/* ── Page header ── */}
-        <div className="flex items-start justify-between gap-4 flex-wrap">
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+          className="flex items-start justify-between gap-4 flex-wrap"
+        >
           <div className="space-y-1">
             <h1 className="page-title">Tenders</h1>
             <p className="text-sm text-muted-foreground">
@@ -820,7 +861,7 @@ const Tenders = () => {
               <Stat label="Saved" value={bookmarks.size} />
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* ── Filters ── */}
         <div className="sticky top-0 z-30 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-3 bg-background/85 backdrop-blur-md">
@@ -891,7 +932,7 @@ const Tenders = () => {
           </div>
 
           {/* Active filter chips */}
-          {(country !== "all" || subregion !== "all" || category !== "all" || status !== "all" || deadlineScope !== "active") && (
+          {(country !== "all" || subregion !== "all" || category !== "all" || deadlineScope !== "active") && (
             <div className="flex gap-2 flex-wrap mt-3">
               {country !== "all" && (
                 <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/50 px-2.5 py-1 text-xs font-medium text-foreground">
@@ -917,17 +958,9 @@ const Tenders = () => {
                   </button>
                 </span>
               )}
-              {status !== "all" && (
-                <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/50 px-2.5 py-1 text-xs font-medium text-foreground">
-                  {status}
-                  <button onClick={() => setStatus("all")} className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20 transition-colors" aria-label="Remove status filter">
-                    <X className="h-3 w-3" />
-                  </button>
-                </span>
-              )}
               {deadlineScope !== "active" && (
                 <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/50 px-2.5 py-1 text-xs font-medium text-foreground">
-                  {deadlineScope === "past" ? "Past deadline" : "All deadlines"}
+                  {deadlineScopeLabel(deadlineScope)}
                   <button onClick={() => setDeadlineScope("active")} className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20 transition-colors" aria-label="Remove deadline filter">
                     <X className="h-3 w-3" />
                   </button>

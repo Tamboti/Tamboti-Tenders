@@ -1,11 +1,12 @@
 import { FormEvent, useState } from "react";
-import { Navigate, useLocation, useSearchParams } from "react-router-dom";
+import { Navigate, NavLink, useLocation, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserRole } from "@/hooks/use-user-role";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { trackEvent } from "@/lib/analytics";
+import { LOGO_URL } from "@/lib/brand";
 
 type Mode = "signin" | "signup";
 
@@ -33,7 +34,7 @@ const Login = () => {
         </div>
       );
     }
-    return <Navigate to={isAdmin ? "/sources" : "/tenders"} replace />;
+    return <Navigate to={isAdmin ? "/admin/sources" : "/tenders"} replace />;
   }
 
   const onSubmit = async (e: FormEvent) => {
@@ -92,15 +93,14 @@ const Login = () => {
 
       <div className="relative w-full max-w-[380px] flex flex-col">
         <div className="mb-5">
-          <div className="mb-2 flex items-center gap-2">
-            <img
-              src="https://luykyredvhhcamcmgahp.supabase.co/storage/v1/object/public/Company%20assets/Gemini_Generated_Image_k92dq5k92dq5k92d-removebg-preview.png"
-              alt="Tender Compass"
-              className="h-10 object-contain"
-            />
-          </div>
 
-          <h1 className="text-[26px] font-semibold tracking-[-0.5px] text-foreground leading-tight">
+        <NavLink to="/" className="flex items-center mb-10 justify-center text-center w-full shrink-0 ">
+          <img src={LOGO_URL} alt="Tender Compass" className=" w-14 object-contain" />
+          <span className="whitespace-nowrap text-2xl font-semibold tracking-tighter text-primary">Tamboti Tenders</span>
+        </NavLink>
+
+
+          <h1 className="text-[20px] font-semibold tracking-[-0.5px] text-foreground leading-tight">
             {mode === "signin" ? "Welcome back" : "Create your account"}
           </h1>
           <p className="text-[15px] text-muted-foreground leading-relaxed">

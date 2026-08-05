@@ -6,33 +6,27 @@ import { TopBar } from "./TopBar";
 export const AppLayout = () => {
   const location = useLocation();
   return (
-    <div className="h-screen overflow-hidden bg-muted/40">
-      <div className="flex h-full min-h-0">
-        <Sidebar />
+    <div className="flex h-screen min-h-0 overflow-hidden bg-background">
+      <Sidebar />
 
-        <div className="flex min-h-0 min-w-0 flex-1">
-          <div className="flex flex-1 justify-center md:p-4">
-            <div className="flex h-full w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-sm">
-              <div className="md:hidden">
-                <TopBar />
-              </div>
-
-              <main className="min-h-0 flex-1 overflow-y-auto">
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={location.pathname}
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -4 }}
-                    transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-                  >
-                    <Outlet />
-                  </motion.div>
-                </AnimatePresence>
-              </main>
-            </div>
-          </div>
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col border-l border-border">
+        <div className="md:hidden">
+          <TopBar />
         </div>
+
+        <main className="min-h-0 flex-1 overflow-y-auto">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={location.pathname}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.12 }}
+            >
+              <Outlet />
+            </motion.div>
+          </AnimatePresence>
+        </main>
       </div>
     </div>
   );

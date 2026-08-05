@@ -11,6 +11,7 @@ import {
   CheckCircle as ICheckCircle,
   Circle as ICircle,
   Clock as IClock,
+  CreditCard as ICreditCard,
   Cube as ICube,
   Dollar as IDollar,
   Drag as IDrag,
@@ -24,6 +25,7 @@ import {
   Lock as ILock,
   LogOut as ILogOut,
   MapPin as IMapPin,
+  MediaImage as IMediaImage,
   Menu as IMenu,
   MoreHoriz as IMoreHoriz,
   NavArrowDown as INavArrowDown,
@@ -101,4 +103,6 @@ export const AlertTriangle = withDefaultStroke(IWarningTriangle);
 export const Users = withDefaultStroke(IGroup);
 export const FileText = withDefaultStroke(INotes);
 export const Eye = withDefaultStroke(IEye);
+export const CreditCard = withDefaultStroke(ICreditCard);
+export const Image = withDefaultStroke(IMediaImage);
 

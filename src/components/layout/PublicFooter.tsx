@@ -1,13 +1,16 @@
-import { Link } from "react-router-dom";
+import { Link, NavLink } from "react-router-dom";
 
 export const PublicFooter = () => (
   <footer className="border-t border-border/60 bg-muted/20">
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
       <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1.5">
-          <span className="text-sm font-semibold text-foreground">Tender Compass</span>
+        <NavLink to="/" className="shrink-0 flex items-center ">
+          <img src="https://luykyredvhhcamcmgahp.supabase.co/storage/v1/object/public/Company%20assets/d7d592e6-4c11-47a1-888d-f2c924958a69-removebg-preview.png" alt="Tender Compass" className=" w-14 object-contain" />
+          <span className="text-2xl font-semibold tracking-tighter text-primary">Tamboti Tenders</span>
+        </NavLink>
           <p className="max-w-xs text-sm text-muted-foreground">
-            Search, track, and get alerted on procurement tenders across Africa.
+            Search, track and get alerted on procurement tenders across Africa.
           </p>
         </div>
 
@@ -34,7 +37,7 @@ export const PublicFooter = () => (
       </div>
 
       <div className="mt-8 border-t border-border/60 pt-6 text-xs text-muted-foreground">
-        © {new Date().getFullYear()} Tender Compass. All rights reserved.
+        © {new Date().getFullYear()} Tamboti Tenders. All rights reserved.
       </div>
     </div>
   </footer>
