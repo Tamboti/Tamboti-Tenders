@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useUserRole } from "@/hooks/use-user-role";
 import type { BillingInterval } from "@/lib/plan";
 
 export type SubscriptionStatus = "inactive" | "trialing" | "active" | "past_due" | "canceled";
@@ -19,6 +20,7 @@ type SubscriptionRow = {
  */
 export const useSubscription = () => {
   const { user, loading: authLoading } = useAuth();
+  const { isAdmin, isLoading: roleLoading } = useUserRole();
   const queryClient = useQueryClient();
 
   const query = useQuery({
@@ -42,9 +44,11 @@ export const useSubscription = () => {
 
   return {
     status,
-    isPro: status === "active" || status === "trialing",
+    // Admins bypass all plan gating regardless of subscription status.
+    isPro: isAdmin || status === "active" || status === "trialing",
+    isAdmin,
     currentPeriodEnd: query.data?.current_period_end ?? null,
-    isLoading: authLoading || (!!user && query.isLoading),
+    isLoading: authLoading || roleLoading || (!!user && query.isLoading),
     refetch: query.refetch,
     invalidate: () => queryClient.invalidateQueries({ queryKey: ["subscription", user?.id] }),
   };

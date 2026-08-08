@@ -1,14 +1,14 @@
 import { NavLink } from "react-router-dom";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { PanelLeft, LogOut } from "lucide-react";
+import { PanelLeft, LogOut, Home } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserRole } from "@/hooks/use-user-role";
 import { visibleNavSections } from "./nav.ts";
 import { AvatarInitial } from "@/components/AvatarInitial";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { LOGO_URL } from "@/lib/brand";
+import { LOGO_URL, SITE_NAME } from "@/lib/brand";
 
 const ROLE_LABEL: Record<string, string> = { admin: "Admin", member: "Member" };
 
@@ -24,6 +24,10 @@ export const Sidebar = ({ mobile = false, onNavigate }: SidebarProps) => {
   const navSections = visibleNavSections(isAdmin);
 
   const compact = mobile ? false : collapsed;
+  // Admins mostly live in Sources/Analytics/Blog, not the Tenders/Bookmarks/
+  // Alerts personal section — a tighter, denser nav reflects that this
+  // sidebar is a tool they scan quickly, not a member's small personal menu.
+  const dense = isAdmin && !compact;
 
   const content = (
     <>
@@ -31,7 +35,7 @@ export const Sidebar = ({ mobile = false, onNavigate }: SidebarProps) => {
       <div className={cn("px-3", mobile ? "pb-3" : "pb-2")} />
 
       {/* NAV */}
-      <nav className="flex-1 overflow-y-auto px-2 py-2 space-y-4">
+      <nav className={cn("flex-1 overflow-y-auto px-2 py-2", dense ? "space-y-2" : "space-y-4")}>
         {/* LOGO */}
         <div
           className={cn(
@@ -42,7 +46,7 @@ export const Sidebar = ({ mobile = false, onNavigate }: SidebarProps) => {
           {!mobile && (
             <img
               src={LOGO_URL}
-              alt="Tender Compass"
+              alt={SITE_NAME}
               className="h-9 w-9 object-contain shrink-0"
             />
           )}
@@ -58,13 +62,20 @@ export const Sidebar = ({ mobile = false, onNavigate }: SidebarProps) => {
         {navSections.map((section, idx) => (
           <div
             key={idx}
-            className={cn("space-y-1", compact && "space-y-2")}
+            className={cn(
+              "space-y-1",
+              compact && "space-y-2",
+              dense && section.heading === "Personal" && "mt-2 border-t border-sidebar-border pt-2"
+            )}
           >
             {section.heading && !compact && (
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="px-3 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70"
+                className={cn(
+                  "px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70",
+                  dense ? "pt-1 pb-0.5" : "pt-2 pb-1"
+                )}
               >
                 {section.heading}
               </motion.div>
@@ -79,10 +90,13 @@ export const Sidebar = ({ mobile = false, onNavigate }: SidebarProps) => {
                 title={compact ? item.label : undefined}
                 className={({ isActive }) =>
                   cn(
-                    "group flex rounded-lg text-sm font-medium transition-colors duration-150",
+                    "group flex rounded-lg font-medium transition-colors duration-150",
+                    dense ? "text-[13px]" : "text-sm",
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-1 focus-visible:ring-offset-sidebar-background",
                     compact
                       ? "justify-center items-center h-10 w-10 mx-auto"
+                      : dense
+                      ? "items-center gap-2 px-2.5 py-1.5"
                       : "items-center gap-2.5 px-3 py-2",
                     isActive
                       ? "bg-primary text-primary-foreground font-semibold shadow-sm shadow-primary/25"
@@ -94,7 +108,8 @@ export const Sidebar = ({ mobile = false, onNavigate }: SidebarProps) => {
                   <>
                     <item.icon
                       className={cn(
-                        "h-5 w-5 shrink-0 transition-colors",
+                        "shrink-0 transition-colors",
+                        dense ? "h-4 w-4" : "h-5 w-5",
                         isActive ? "text-primary-foreground" : "text-muted-foreground group-hover:text-foreground"
                       )}
                     />
@@ -133,6 +148,15 @@ export const Sidebar = ({ mobile = false, onNavigate }: SidebarProps) => {
               title={user?.email ? `${user.email} · ${role ?? "—"}` : undefined}
             />
             <ThemeToggle className="h-8 w-8 shrink-0" />
+            <NavLink
+              to="/"
+              onClick={onNavigate}
+              className="h-8 w-8 shrink-0 flex items-center justify-center rounded-md text-muted-foreground hover:bg-sidebar-accent hover:text-foreground transition-colors"
+              aria-label="Go to main site"
+              title="Go to main site"
+            >
+              <Home className="h-4 w-4" />
+            </NavLink>
             <button
               onClick={() => {
                 void signOut();
@@ -164,6 +188,15 @@ export const Sidebar = ({ mobile = false, onNavigate }: SidebarProps) => {
               </div>
               <ThemeToggle className="h-8 w-8 shrink-0" />
             </div>
+
+            <NavLink
+              to="/"
+              onClick={onNavigate}
+              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-sidebar-foreground/90 hover:bg-sidebar-accent hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-1 focus-visible:ring-offset-sidebar-background"
+            >
+              <Home className="h-4 w-4" />
+              Go to main site
+            </NavLink>
 
             <button
               onClick={() => {

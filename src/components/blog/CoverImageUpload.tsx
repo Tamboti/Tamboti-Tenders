@@ -36,7 +36,13 @@ export const CoverImageUpload = ({
   return (
     <div className="space-y-2">
       {value && (
-        <img src={value} alt="Cover" className="h-40 w-full rounded-lg border border-border object-cover" />
+        <img
+          src={value}
+          alt="Cover"
+          draggable={false}
+          className="h-40 w-full select-none rounded-lg border border-border object-cover"
+          style={{ WebkitTouchCallout: "none" }}
+        />
       )}
       <input
         ref={inputRef}

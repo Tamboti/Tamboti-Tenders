@@ -2,6 +2,7 @@ import { Outlet, useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
+import { PortalBottomNav } from "./PortalBottomNav";
 
 export const AppLayout = () => {
   const location = useLocation();
@@ -27,6 +28,8 @@ export const AppLayout = () => {
             </motion.div>
           </AnimatePresence>
         </main>
+
+        <PortalBottomNav />
       </div>
     </div>
   );

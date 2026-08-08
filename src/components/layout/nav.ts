@@ -32,20 +32,30 @@ export const NAV_SECTIONS: NavSection[] = [
       { to: "/portal/billing", label: "Billing", icon: CreditCard, hiddenForAdmin: true },
     ],
   },
-  { heading: "Scrapers", items: [{ to: "/admin/sources", label: "Sources", icon: Globe, adminOnly: true }] },
   {
     heading: "Insights",
     items: [{ to: "/admin/analytics", label: "Analytics", icon: TrendingUp, adminOnly: true }],
   },
+  { heading: "Scrapers", items: [{ to: "/admin/sources", label: "Sources", icon: Globe, adminOnly: true }] },
   { heading: "Content", items: [{ to: "/admin/posts", label: "Blog", icon: Pencil, adminOnly: true }] },
 ];
 
 // Cosmetic only — RLS is what actually enforces admin-only access.
-export const visibleNavSections = (isAdmin: boolean): NavSection[] =>
-  NAV_SECTIONS.map((section) => ({
+export const visibleNavSections = (isAdmin: boolean): NavSection[] => {
+  const sections = NAV_SECTIONS.map((section) => ({
     ...section,
     items: section.items.filter(
       (item) => (!item.adminOnly || isAdmin) && !(item.hiddenForAdmin && isAdmin)
     ),
   })).filter((section) => section.items.length > 0);
+
+  if (!isAdmin) return sections;
+
+  // Admins live in Sources/Analytics/Blog day to day — surface those first
+  // and push Personal (their own Tenders/Bookmarks/Alerts) to the bottom,
+  // since it isn't the main focus of the admin dashboard.
+  const personal = sections.filter((s) => s.heading === "Personal");
+  const rest = sections.filter((s) => s.heading !== "Personal");
+  return [...rest, ...personal];
+};
 

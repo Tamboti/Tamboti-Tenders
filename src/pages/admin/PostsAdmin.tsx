@@ -7,7 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { DateTimePicker } from "@/components/ui/datetime-picker";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,6 +27,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "@/components/ui/sonner";
 import { handleDbError } from "@/lib/dbError";
+import { formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { StatTile } from "@/components/analytics/StatTile";
 import {
@@ -40,6 +42,7 @@ import {
   Trash2,
   ExternalLink,
   Image as ImageIcon,
+  Calendar,
 } from "@/components/icons";
 import PostEditor, { type DeleteTarget } from "./PostEditor";
 
@@ -47,7 +50,8 @@ type Post = {
   id: string;
   slug: string;
   title: string;
-  status: "draft" | "published";
+  status: "draft" | "scheduled" | "published";
+  scheduled_at: string | null;
   source: "manual" | "ai";
   category: string;
   cover_image_url: string | null;
@@ -57,13 +61,16 @@ type Post = {
 const STATUS_FILTERS = [
   { value: "all", label: "All" },
   { value: "published", label: "Published" },
+  { value: "scheduled", label: "Scheduled" },
   { value: "draft", label: "Drafts" },
 ] as const;
 
 const statusBadgeClass = (s: string) =>
   s === "published"
     ? "bg-success/15 text-success border-success/30"
-    : "bg-muted text-muted-foreground border-border";
+    : s === "scheduled"
+      ? "bg-warning/15 text-warning border-warning/30"
+      : "bg-muted text-muted-foreground border-border";
 
 const sourceBadgeClass = (s: string) =>
   s === "ai" ? "bg-primary/10 text-primary border-primary/30" : "bg-muted text-muted-foreground border-border";
@@ -71,7 +78,7 @@ const sourceBadgeClass = (s: string) =>
 const fetchPosts = async (): Promise<Post[]> => {
   const { data, error } = await supabase
     .from("posts")
-    .select("id, slug, title, status, source, category, cover_image_url, updated_at")
+    .select("id, slug, title, status, scheduled_at, source, category, cover_image_url, updated_at")
     .order("updated_at", { ascending: false });
   if (error) throw new Error(handleDbError(error, "Failed to load posts"));
   return (data as Post[]) ?? [];
@@ -86,7 +93,17 @@ const CoverThumb = ({ url }: { url: string | null }) =>
     </div>
   );
 
-const RowActions = ({ post, onEdit, onDelete }: { post: Post; onEdit: () => void; onDelete: () => void }) => (
+const RowActions = ({
+  post,
+  onEdit,
+  onSchedule,
+  onDelete,
+}: {
+  post: Post;
+  onEdit: () => void;
+  onSchedule: () => void;
+  onDelete: () => void;
+}) => (
   <DropdownMenu>
     <DropdownMenuTrigger asChild>
       <button
@@ -101,6 +118,12 @@ const RowActions = ({ post, onEdit, onDelete }: { post: Post; onEdit: () => void
       <DropdownMenuItem onClick={onEdit}>
         <Pencil className="h-3.5 w-3.5 mr-2" /> Edit
       </DropdownMenuItem>
+      {post.status !== "published" && (
+        <DropdownMenuItem onClick={onSchedule}>
+          <Calendar className="h-3.5 w-3.5 mr-2" />
+          {post.status === "scheduled" ? "Reschedule…" : "Schedule…"}
+        </DropdownMenuItem>
+      )}
       {post.status === "published" && (
         <DropdownMenuItem asChild>
           <a href={`/blog/${post.slug}`} target="_blank" rel="noreferrer">
@@ -124,6 +147,10 @@ export default function PostsAdmin() {
   const [editorPostId, setEditorPostId] = useState<string | null | undefined>(undefined);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const [deleting, setDeleting] = useState(false);
+  // Quick-schedule from the row menu, without opening the full editor.
+  const [schedulingTarget, setSchedulingTarget] = useState<Post | null>(null);
+  const [scheduleDraft, setScheduleDraft] = useState<string | null>(null);
+  const [scheduling, setScheduling] = useState(false);
 
   const postsQuery = useQuery({ queryKey: ["admin-posts"], queryFn: fetchPosts, staleTime: 30_000 });
   const posts = useMemo(() => postsQuery.data ?? [], [postsQuery.data]);
@@ -185,17 +212,41 @@ export default function PostsAdmin() {
     invalidatePosts();
   };
 
+  const openSchedule = (post: Post) => {
+    setSchedulingTarget(post);
+    setScheduleDraft(post.scheduled_at);
+  };
+
+  const confirmSchedule = async () => {
+    if (!schedulingTarget) return;
+    setScheduling(true);
+    // No date picked = pulling it out of the schedule, back to draft.
+    const nextStatus = scheduleDraft ? "scheduled" : "draft";
+    const { error } = await supabase
+      .from("posts")
+      .update({ status: nextStatus, scheduled_at: scheduleDraft })
+      .eq("id", schedulingTarget.id);
+    setScheduling(false);
+    if (error) {
+      toast.error(handleDbError(error));
+      return;
+    }
+    toast.success(scheduleDraft ? `Scheduled for ${formatDateTime(scheduleDraft)}` : "Removed from schedule — back to draft");
+    setSchedulingTarget(null);
+    invalidatePosts();
+  };
+
   return (
     <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="page-title">Blog posts</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            AI-generated drafts land here for review — nothing publishes automatically.
+            AI-generated drafts land here for review - nothing publishes automatically.
           </p>
         </div>
-        <div className="flex gap-2 shrink-0">
-          <Button variant="outline" size="sm" onClick={generatePost} disabled={generating}>
+        <div className="flex gap-2 shrink-0 flex-col sm:flex-row ">
+          <Button variant="outline" className="rounded-lg" size="sm" onClick={generatePost} disabled={generating}>
             {generating ? (
               <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
             ) : (
@@ -203,7 +254,7 @@ export default function PostsAdmin() {
             )}
             Generate post
           </Button>
-          <Button size="sm" onClick={() => setEditorPostId(null)}>
+          <Button size="sm" className="rounded-lg" onClick={() => setEditorPostId(null)}>
             <Plus className="h-3.5 w-3.5 mr-1.5" />
             New post
           </Button>
@@ -306,7 +357,15 @@ export default function PostsAdmin() {
                     </td>
                     <td className="px-4 py-2 text-muted-foreground">{p.category}</td>
                     <td className="px-4 py-2">
-                      <Badge variant="outline" className={statusBadgeClass(p.status)}>
+                      <Badge
+                        variant="outline"
+                        className={statusBadgeClass(p.status)}
+                        title={
+                          p.status === "scheduled" && p.scheduled_at
+                            ? `Publishes ${formatDateTime(p.scheduled_at)}`
+                            : undefined
+                        }
+                      >
                         {p.status}
                       </Badge>
                     </td>
@@ -322,6 +381,7 @@ export default function PostsAdmin() {
                       <RowActions
                         post={p}
                         onEdit={() => setEditorPostId(p.id)}
+                        onSchedule={() => openSchedule(p)}
                         onDelete={() => setDeleteTarget({ id: p.id, title: p.title, status: p.status })}
                       />
                     </td>
@@ -369,7 +429,15 @@ export default function PostsAdmin() {
                   <span className="block text-[13px] font-medium text-foreground truncate">{p.title}</span>
                   <div className="flex flex-wrap items-center gap-1.5">
                     <span className="text-[11px] text-muted-foreground">{p.category}</span>
-                    <Badge variant="outline" className={cn("text-[10px]", statusBadgeClass(p.status))}>
+                    <Badge
+                      variant="outline"
+                      className={cn("text-[10px]", statusBadgeClass(p.status))}
+                      title={
+                        p.status === "scheduled" && p.scheduled_at
+                          ? `Publishes ${formatDateTime(p.scheduled_at)}`
+                          : undefined
+                      }
+                    >
                       {p.status}
                     </Badge>
                     <Badge variant="outline" className={cn("text-[10px]", sourceBadgeClass(p.source))}>
@@ -380,6 +448,7 @@ export default function PostsAdmin() {
                 <RowActions
                   post={p}
                   onEdit={() => setEditorPostId(p.id)}
+                  onSchedule={() => openSchedule(p)}
                   onDelete={() => setDeleteTarget({ id: p.id, title: p.title, status: p.status })}
                 />
               </div>
@@ -425,6 +494,28 @@ export default function PostsAdmin() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={!!schedulingTarget} onOpenChange={(open) => !open && setSchedulingTarget(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="truncate">Schedule "{schedulingTarget?.title}"</DialogTitle>
+          </DialogHeader>
+          <DateTimePicker value={scheduleDraft} onChange={setScheduleDraft} placeholder="Publish immediately" />
+          <p className="text-xs text-muted-foreground">
+            {scheduleDraft
+              ? `Publishes automatically ${formatDateTime(scheduleDraft)}.`
+              : "No date picked — saving now will send this back to a draft."}
+          </p>
+          <DialogFooter>
+            <Button variant="outline" size="sm" disabled={scheduling} onClick={() => setSchedulingTarget(null)}>
+              Cancel
+            </Button>
+            <Button size="sm" disabled={scheduling} onClick={() => void confirmSchedule()}>
+              {scheduling ? "Saving…" : scheduleDraft ? "Schedule" : "Save as draft"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

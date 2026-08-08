@@ -217,7 +217,7 @@ export const Landing = () => {
             >
               {HERO_IMAGE_URL ? (
                 <img
-                  src="https://luykyredvhhcamcmgahp.supabase.co/storage/v1/object/public/Company%20assets/ChatGPT_Image_Jul_22__2026__06_34_52_PM-removebg-preview.png"
+                  src="https://luykyredvhhcamcmgahp.supabase.co/storage/v1/object/public/Company%20assets/ChatGPT%20Image%20Aug%207,%202026,%2007_31_29%20PM%20(3).png"
                   alt=""
                   className="mx-auto aspect-square w-full object-contain"
                 />

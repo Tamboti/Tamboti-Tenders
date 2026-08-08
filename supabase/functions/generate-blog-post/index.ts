@@ -131,7 +131,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
           {
             role: "system",
             content:
-              "You are a procurement market analyst writing a blog post for Tender Compass, a site that tracks African procurement tenders. " +
+              "You are a procurement market analyst writing a blog post for Tamboti Tenders, a site that tracks African procurement tenders. " +
               "You are given a JSON snapshot of trend data pulled directly from the live tenders database. " +
               "Write a short, informative blog post grounded ONLY in the numbers provided — never invent statistics, " +
               "figures, or claims that aren't directly supported by the snapshot. If a number isn't in the snapshot, don't mention it. " +

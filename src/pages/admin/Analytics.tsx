@@ -13,8 +13,6 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import type { PostgrestFilterBuilder } from "@supabase/postgrest-js";
 import { handleDbError } from "@/lib/dbError";
-import { useCountryReference } from "@/hooks/use-country-reference";
-import { resolveCountryDisplay } from "@/lib/countries";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { StatTile } from "@/components/analytics/StatTile";
@@ -55,18 +53,6 @@ const bucketByDay = (isoDates: string[], days: number) => {
     date: new Date(date).toLocaleDateString(undefined, { month: "short", day: "numeric" }),
     value,
   }));
-};
-
-const countBy = (values: (string | null | undefined)[], topN: number) => {
-  const counts = new Map<string, number>();
-  for (const v of values) {
-    if (!v) continue;
-    counts.set(v, (counts.get(v) ?? 0) + 1);
-  }
-  return Array.from(counts.entries())
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, topN)
-    .map(([name, value]) => ({ name, value }));
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -149,7 +135,6 @@ const truncate = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 1)}
 
 export default function Analytics() {
   const [rangeDays, setRangeDays] = useState<number>(30);
-  const { byIso2 } = useCountryReference();
 
   // Admins are the people building this platform, not the members we're
   // trying to understand — every query below excludes their own activity so
@@ -207,45 +192,31 @@ export default function Analytics() {
     queryKey: ["analytics-range", rangeDays, adminIds],
     enabled: adminIdsQuery.isSuccess,
     queryFn: async () => {
-      const [signups, bookmarks, alertsSent, visits, newSubscriptions] = await Promise.all([
+      const [signups, bookmarks, visits, newSubscriptions] = await Promise.all([
         supabase.from("user_profiles").select("created_at").neq("role", "admin").gte("created_at", sinceIso),
         excludingAdmins(
           supabase
             .from("tender_bookmarks")
-            .select("user_id, tender_id, created_at, tenders(title, title_en, category, country, country_iso2)")
+            .select("user_id, tender_id, created_at, tenders(title, title_en)")
             .gte("created_at", sinceIso),
           adminIds
         ),
-        supabase
-          .from("alert_sent_tenders")
-          .select("sent_at, alert_preferences(user_id)")
-          .gte("sent_at", sinceIso),
         supabase.from("site_visits").select("visited_on").gte("visited_on", sinceDate),
         excludingAdmins(
           supabase.from("subscriptions").select("user_id, created_at").gte("created_at", sinceIso),
           adminIds
         ),
       ]);
-      for (const r of [signups, bookmarks, alertsSent, visits, newSubscriptions]) {
+      for (const r of [signups, bookmarks, visits, newSubscriptions]) {
         if (r.error) throw new Error(handleDbError(r.error));
       }
-      const adminSet = new Set(adminIds);
       return {
         signups: signups.data ?? [],
         bookmarks: (bookmarks.data ?? []) as {
           tender_id: string;
           created_at: string;
-          tenders: {
-            title: string;
-            title_en: string | null;
-            category: string | null;
-            country: string | null;
-            country_iso2: string | null;
-          } | null;
+          tenders: { title: string; title_en: string | null } | null;
         }[],
-        alertsSent: ((alertsSent.data ?? []) as { sent_at: string; alert_preferences: { user_id: string } | null }[]).filter(
-          (r) => !r.alert_preferences || !adminSet.has(r.alert_preferences.user_id)
-        ),
         visits: visits.data ?? [],
         newSubscriptions: (newSubscriptions.data ?? []) as { user_id: string; created_at: string }[],
       };
@@ -258,14 +229,6 @@ export default function Analytics() {
     () => bucketByDay((rangeQuery.data?.signups ?? []).map((r) => r.created_at), rangeDays),
     [rangeQuery.data, rangeDays]
   );
-  const bookmarksTrend = useMemo(
-    () => bucketByDay((rangeQuery.data?.bookmarks ?? []).map((r) => r.created_at), rangeDays),
-    [rangeQuery.data, rangeDays]
-  );
-  const alertsSentTrend = useMemo(
-    () => bucketByDay((rangeQuery.data?.alertsSent ?? []).map((r) => r.sent_at), rangeDays),
-    [rangeQuery.data, rangeDays]
-  );
   const visitsTrend = useMemo(
     () => bucketByDay((rangeQuery.data?.visits ?? []).map((r) => r.visited_on), rangeDays),
     [rangeQuery.data, rangeDays]
@@ -274,17 +237,6 @@ export default function Analytics() {
     () => bucketByDay((rangeQuery.data?.newSubscriptions ?? []).map((r) => r.created_at), rangeDays),
     [rangeQuery.data, rangeDays]
   );
-
-  const bookmarkedCategories = useMemo(
-    () => countBy((rangeQuery.data?.bookmarks ?? []).map((r) => r.tenders?.category), 8),
-    [rangeQuery.data]
-  );
-  const bookmarkedCountries = useMemo(() => {
-    const names = (rangeQuery.data?.bookmarks ?? []).map(
-      (r) => resolveCountryDisplay(r.tenders?.country, r.tenders?.country_iso2, byIso2).name || null
-    );
-    return countBy(names, 8);
-  }, [rangeQuery.data, byIso2]);
 
   const topBookmarkedTenders = useMemo(() => {
     const rows = rangeQuery.data?.bookmarks ?? [];
@@ -307,7 +259,7 @@ export default function Analytics() {
         <div>
           <h1 className="page-title">Analytics</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            How members use Tender Compass — admin activity is excluded from every number below.
+            How members use Tamboti Tenders - admin activity is excluded from every number below.
           </p>
         </div>
       </div>
@@ -369,20 +321,8 @@ export default function Analytics() {
         <ChartCard title="Signups" subtitle={`New users, last ${rangeDays} days`}>
           <TrendChart data={signupsTrend} />
         </ChartCard>
-        <ChartCard title="Bookmarks" subtitle={`New bookmarks, last ${rangeDays} days`}>
-          <TrendChart data={bookmarksTrend} />
-        </ChartCard>
-        <ChartCard title="Alerts sent" subtitle={`Alert emails delivered, last ${rangeDays} days`}>
-          <TrendChart data={alertsSentTrend} />
-        </ChartCard>
         <ChartCard title="New subscriptions" subtitle={`New Pro subscriptions started, last ${rangeDays} days`}>
           <TrendChart data={newSubscriptionsTrend} />
-        </ChartCard>
-        <ChartCard title="Most-bookmarked categories" subtitle={`Last ${rangeDays} days`}>
-          <RankingChart data={bookmarkedCategories} />
-        </ChartCard>
-        <ChartCard title="Most-bookmarked countries" subtitle={`Last ${rangeDays} days`}>
-          <RankingChart data={bookmarkedCountries} />
         </ChartCard>
         <ChartCard title="Top bookmarked tenders" subtitle={`Specific opportunities drawing the most interest, last ${rangeDays} days`}>
           <RankingChart data={topBookmarkedTenders} />

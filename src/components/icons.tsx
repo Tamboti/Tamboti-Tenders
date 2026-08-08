@@ -3,6 +3,7 @@ import {
   ArrowLeft as IArrowLeft,
   ArrowRight as IArrowRight,
   Bell as IBell,
+  Bold as IBold,
   Bookmark as IBookmark,
   BookmarkSolid as IBookmarkSolid,
   Building as IBuilding,
@@ -21,9 +22,14 @@ import {
   Globe as IGlobe,
   GraphUp as IGraphUp,
   Group as IGroup,
+  Home as IHome,
+  HSquare as IHSquare,
+  Italic as IItalic,
   Label as ILabel,
+  List as IList,
   Lock as ILock,
   LogOut as ILogOut,
+  MailOpen as IMailOpen,
   MapPin as IMapPin,
   MediaImage as IMediaImage,
   Menu as IMenu,
@@ -33,10 +39,12 @@ import {
   NavArrowRight as INavArrowRight,
   NavArrowUp as INavArrowUp,
   Notes as INotes,
+  NumberedListLeft as INumberedListLeft,
   OpenInWindow as IOpenInWindow,
   PageSearch as IPageSearch,
   Play as IPlay,
   Plus as IPlus,
+  Quote as IQuote,
   RefreshDouble as IRefreshDouble,
   Search as ISearch,
   SidebarCollapse as ISidebarCollapse,
@@ -105,4 +113,12 @@ export const FileText = withDefaultStroke(INotes);
 export const Eye = withDefaultStroke(IEye);
 export const CreditCard = withDefaultStroke(ICreditCard);
 export const Image = withDefaultStroke(IMediaImage);
+export const Home = withDefaultStroke(IHome);
+export const Bold = withDefaultStroke(IBold);
+export const Italic = withDefaultStroke(IItalic);
+export const Heading2 = withDefaultStroke(IHSquare);
+export const List = withDefaultStroke(IList);
+export const ListOrdered = withDefaultStroke(INumberedListLeft);
+export const Quote = withDefaultStroke(IQuote);
+export const MailOpen = withDefaultStroke(IMailOpen);
 

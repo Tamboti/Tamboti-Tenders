@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { FunctionsHttpError } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/hooks/use-subscription";
@@ -20,19 +21,19 @@ import {
   Clock,
   Globe,
   Loader2,
+  MailOpen,
   Pencil,
   Plus,
   Search,
   Tag,
   Trash2,
   X,
-} from "lucide-react";
+} from "@/components/icons";
 import { toast } from "sonner";
 import { handleDbError } from "@/lib/dbError";
 import { trackEvent } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 import { PageContainer } from "@/components/layout/PageContainer";
-import { MailOpen } from "iconoir-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -438,25 +439,7 @@ function AlertModal({
               onClick={() => onSave(draft, emailRaw)}
               disabled={!canSave}
             >
-              {saving && <div role="status" aria-label="Loading...">
-                <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24">
-                  {[...Array(8)].map((_, i) => (
-                    <line
-                      key={i}
-                      x1="12"
-                      y1="3"
-                      x2="12"
-                      y2="6"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      className="opacity-30"
-                      transform={`rotate(${i * 45} 12 12)`}
-                    />
-                  ))}
-                </svg>
-              </div>
-              }
+              {saving && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
               {saving ? "Saving..." : initial ? "Save changes" : "Create alert"}
             </Button>
           </div>
@@ -486,7 +469,7 @@ function AlertCard({
   return (
     <div
       className={cn(
-        "group flex w-full min-w-0 items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 shadow-sm transition-colors hover:border-foreground/20",
+        "group flex w-full min-w-0 items-center gap-3 rounded-lg border border-border/70 bg-card px-4 py-3 shadow-sm transition-colors hover:border-foreground/20",
         !alert.enabled && "opacity-55"
       )}
     >
@@ -547,13 +530,12 @@ function AlertCard({
         </div>
       </div>
 
-      {/* Actions — always visible on mobile, hover-reveal pencil on desktop */}
+      {/* Actions — always visible on mobile (no hover), hover-reveal on desktop */}
       <div className="flex shrink-0 items-center gap-1">
-     
         <Button
           variant="ghost"
           size="sm"
-          className="h-7 px-2 text-xs text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-foreground"
+          className="h-7 px-2 text-xs text-muted-foreground opacity-100 transition-opacity hover:text-foreground md:opacity-0 md:group-hover:opacity-100"
           onClick={onTest}
           disabled={testing}
         >
@@ -563,7 +545,7 @@ function AlertCard({
         <Button
           variant="ghost"
           size="icon"
-          className="h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100"
+          className="h-7 w-7 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100"
           onClick={onEdit}
         >
           <Pencil className="h-3.5 w-3.5" />
@@ -730,12 +712,31 @@ const Alerts = () => {
 
   const sendTest = async (alert: AlertPreference) => {
     if (!user) return;
-    setSendingTestId(alert.id); 
-    const { data, error } = await supabase.functions.invoke("tender-email-alerts", {
+    setSendingTestId(alert.id);
+    // send-alert-digest is the live function (also runs the */15min cron digest);
+    // tender-email-alerts is an older, unscheduled function kept only for
+    // rollback — test sends must match what the real digest actually does.
+    const { data, error } = await supabase.functions.invoke<{
+      ok?: boolean;
+      sent?: boolean;
+      reason?: string;
+      error?: string;
+    }>("send-alert-digest", {
       body: { alertId: alert.id, mode: "test" },
     });
     setSendingTestId(null);
-    if (error) return toast.error(handleDbError(error));
+    if (error) {
+      // A non-2xx from the function lands here as a FunctionsHttpError, not
+      // in `data` — its body carries the actual reason (e.g. "Alerts are
+      // disabled"), so surface that instead of a generic failure toast.
+      if (error instanceof FunctionsHttpError) {
+        const body = await error.context.json().catch(() => null);
+        return toast.error(body?.error ?? "Couldn't send test email");
+      }
+      return toast.error(handleDbError(error));
+    }
+    if (data?.error) return toast.error(data.error);
+    if (data?.sent === false) return toast.info(data.reason ?? "No matching tenders right now");
     toast.success("Test email sent");
   };
 
@@ -747,36 +748,36 @@ const Alerts = () => {
           <p className="mt-0.5 max-w-sm text-sm text-muted-foreground">
             Receive digest emails when new tenders match your filters.
           </p>
+          {!isPro && (
+            <p className="mt-1 text-xs text-muted-foreground/70">
+              {alerts.length}/{FREE_ALERT_LIMIT} free {FREE_ALERT_LIMIT === 1 ? "alert" : "alerts"} used
+              {alerts.length >= FREE_ALERT_LIMIT && (
+                <>
+                  {" · "}
+                  <button
+                    type="button"
+                    onClick={() => navigate("/pricing")}
+                    className="underline underline-offset-2 hover:text-foreground"
+                  >
+                    upgrade for unlimited
+                  </button>
+                </>
+              )}
+            </p>
+          )}
         </div>
-        <Button onClick={openCreate} size="sm" className="shrink-0">
+        <Button onClick={openCreate} size="sm" className="shrink-0 rounded-lg">
           <Plus className="mr-1.5 h-3.5 w-3.5" />
           New alert
         </Button>
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center ">
-          <div role="status" aria-label="Loading...">
-            <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24">
-              {[...Array(8)].map((_, i) => (
-                <line
-                  key={i}
-                  x1="12"
-                  y1="3"
-                  x2="12"
-                  y2="6"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  className="opacity-30"
-                  transform={`rotate(${i * 45} 12 12)`}
-                />
-              ))}
-            </svg>
-          </div>
+        <div className="flex items-center justify-center py-10">
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
         </div>
       ) : alerts.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border bg-card px-6 py-10 text-center">
+        <div className="rounded-2xl border border-dashed border-border bg-card px-6 py-10 text-center">
           <div className="mx-auto mb-3 flex h-9 w-9 items-center justify-center rounded-lg bg-muted">
             <Bell className="h-4 w-4 text-muted-foreground" />
           </div>
@@ -790,7 +791,7 @@ const Alerts = () => {
           </Button>
         </div>
       ) : (
-        <div className="space-y-2 grid grid-cols-1  lg:grid-cols-2     ">
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
           {alerts.map((alert) => (
             <AlertCard
               key={alert.id}

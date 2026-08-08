@@ -6,7 +6,7 @@ import { useUserRole } from "@/hooks/use-user-role";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { trackEvent } from "@/lib/analytics";
-import { LOGO_URL } from "@/lib/brand";
+import { LOGO_URL, SITE_NAME } from "@/lib/brand";
 
 type Mode = "signin" | "signup";
 
@@ -34,7 +34,7 @@ const Login = () => {
         </div>
       );
     }
-    return <Navigate to={isAdmin ? "/admin/sources" : "/tenders"} replace />;
+    return <Navigate to={isAdmin ? "/admin/analytics" : "/tenders"} replace />;
   }
 
   const onSubmit = async (e: FormEvent) => {
@@ -64,7 +64,7 @@ const Login = () => {
         setMode("signin");
       } else {
         trackEvent("sign_up");
-        toast.success("Welcome to Tender Compass!");
+        toast.success(`Welcome to ${SITE_NAME}!`);
       }
       return;
     }
@@ -95,7 +95,7 @@ const Login = () => {
         <div className="mb-5">
 
         <NavLink to="/" className="flex items-center mb-10 justify-center text-center w-full shrink-0 ">
-          <img src={LOGO_URL} alt="Tender Compass" className=" w-14 object-contain" />
+          <img src={LOGO_URL} alt={SITE_NAME} className=" w-14 object-contain" />
           <span className="whitespace-nowrap text-2xl font-semibold tracking-tighter text-primary">Tamboti Tenders</span>
         </NavLink>
 

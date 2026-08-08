@@ -56,7 +56,7 @@ const isDue = (pref: AlertPreference) => {
 };
 
 const buildSubject = (count: number) =>
-  count === 1 ? "Tender Compass: 1 new tender match" : `Tender Compass: ${count} new tender matches`;
+  count === 1 ? "Tamboti Tenders: 1 new tender match" : `Tamboti Tenders: ${count} new tender matches`;
 
 const buildHtml = (rows: TenderRow[]) => {
   const list = rows
@@ -78,7 +78,7 @@ const buildHtml = (rows: TenderRow[]) => {
 
   return `
   <div style="font-family:Inter,Segoe UI,Arial,sans-serif;line-height:1.45;color:#111827;">
-    <h2 style="margin:0 0 12px 0;">Tender Compass alert</h2>
+    <h2 style="margin:0 0 12px 0;">Tamboti Tenders alert</h2>
     <p style="margin:0 0 12px 0;">We found ${rows.length} new tender ${rows.length === 1 ? "match" : "matches"} for your alert preferences.</p>
     <ul style="padding-left:18px;margin:0;">${list}</ul>
   </div>`;
@@ -94,7 +94,7 @@ const buildText = (rows: TenderRow[]) => {
       `  Link: ${APP_URL.replace(/\/$/, "")}/tender/${t.id}`,
     ].filter(Boolean).join("\n")
   );
-  return `Tender Compass alert\n\nWe found ${rows.length} new ${rows.length === 1 ? "match" : "matches"}.\n\n${lines.join("\n\n")}`;
+  return `Tamboti Tenders alert\n\nWe found ${rows.length} new ${rows.length === 1 ? "match" : "matches"}.\n\n${lines.join("\n\n")}`;
 };
 
 async function sendEmail(to: string[], subject: string, html: string, text: string) {

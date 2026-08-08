@@ -35,7 +35,6 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -67,7 +66,8 @@ import {
 } from "@/components/icons";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { handleDbError } from "@/lib/dbError";
-import { isPlanLimitError } from "@/lib/plan";
+import { isPlanLimitError, isWithinFreeVisibilityWindow, FREE_VISIBILITY_DAYS } from "@/lib/plan";
+import { useSubscription } from "@/hooks/use-subscription";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {  AnimatePresence } from "framer-motion";
@@ -112,12 +112,10 @@ const addDaysIso = (days: number) => {
 };
 
 // websearch_to_tsquery (the previous `type: "websearch"` option) only matches
-// whole stemmed words, so "renovat" never matches "renovation" — the same
-// gap the category filter doesn't have, since that's just a client-side
-// `.includes()` over a short in-memory list. There's no "prefix" mode on
-// .textSearch(), so this builds a raw to_tsquery string by hand: strip each
-// word to letters/digits (to_tsquery would otherwise choke on stray
-// `&`/`|`/`:` etc.) and suffix it with `:*`, Postgres's prefix-match
+// whole stemmed words, so "renovat" never matches "renovation". There's no
+// "prefix" mode on .textSearch(), so this builds a raw to_tsquery string by
+// hand: strip each word to letters/digits (to_tsquery would otherwise choke
+// on stray `&`/`|`/`:` etc.) and suffix it with `:*`, Postgres's prefix-match
 // operator, ANDing multiple words together like websearch did.
 const toPrefixTsQuery = (sanitized: string) =>
   sanitized
@@ -126,6 +124,28 @@ const toPrefixTsQuery = (sanitized: string) =>
     .filter(Boolean)
     .map((w) => `${w}:*`)
     .join(" & ");
+
+// The `category` column isn't one clean value per row — some source scrapers
+// join multiple categories into a single string, e.g.
+// "Corporate Wear,Sports Wear and Equipment". The join delimiter is a comma
+// with NO following space; a comma WITH a following space is just normal
+// punctuation inside one category's own descriptive name (e.g. "Computers,
+// Printers, Photocopiers, Networking Equipment and Accessories" is one
+// category). Splitting on that distinction is what turns ~546 raw distinct
+// strings into the real ~187 underlying category values.
+const splitCategoryValue = (raw: string): string[] =>
+  raw
+    .split(/,(?=\S)/)
+    .map((c) => c.trim())
+    .filter(Boolean);
+
+const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+// Matches `value` as one whole joined item — at the very start/end of the
+// raw string, or between two of the no-space-after commas described above —
+// so picking "Corporate Wear" also catches tenders where it's combined with
+// other categories, not just the exact standalone string.
+const categoryMatchPattern = (value: string) => `(^|,)${escapeRegExp(value)}($|,\\S)`;
 
 const Stat = ({
   label,
@@ -169,7 +189,6 @@ const FilterDropdown = ({
 }) => {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [draft, setDraft] = useState(value);
   const Icon = icon;
   const isActive = value !== defaultValue;
   const selectedLabel = options.find((option) => option.value === value)?.label ?? label;
@@ -178,15 +197,15 @@ const FilterDropdown = ({
     : options;
 
   const handleOpenChange = (next: boolean) => {
-    if (next) {
-      setDraft(value);
-      setQuery("");
-    }
+    if (next) setQuery("");
     setOpen(next);
   };
 
-  const applyFilter = () => {
-    onChange(draft);
+  // Picking an option applies it immediately and closes the dropdown — no
+  // separate "Apply" click. Client feedback during testing was that the old
+  // pick-then-confirm flow felt like the tap hadn't done anything.
+  const selectOption = (optionValue: string) => {
+    onChange(optionValue);
     setOpen(false);
   };
 
@@ -248,12 +267,12 @@ const FilterDropdown = ({
         )}
         <div className="max-h-72 overflow-y-auto p-2">
           {visibleOptions.map((option) => {
-            const selected = option.value === draft;
+            const selected = option.value === value;
             return (
               <button
                 type="button"
                 key={option.value}
-                onClick={() => setDraft(option.value)}
+                onClick={() => selectOption(option.value)}
                 className={cn(
                   "flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm transition-colors",
                   selected ? "bg-primary/10 text-primary" : "text-foreground/80 hover:bg-muted"
@@ -268,14 +287,6 @@ const FilterDropdown = ({
             <div className="px-3 py-2 text-sm text-muted-foreground">No matches found</div>
           )}
         </div>
-        <DialogFooter className="border-t border-border/70 p-3">
-          <Button type="button" variant="outline" size="sm" onClick={() => setOpen(false)}>
-            Cancel
-          </Button>
-          <Button type="button" size="sm" onClick={applyFilter}>
-            Apply
-          </Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
@@ -343,6 +354,7 @@ const SkeletonCards = () => (
 const Tenders = () => {
   const { user } = useAuth();
   const { isAdmin } = useUserRole();
+  const { isPro } = useSubscription();
   const { byIso2, africaSubregions } = useCountryReference();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -432,7 +444,18 @@ const Tenders = () => {
 
   const uid = user?.id ?? getAnonUserId();
 
+  // Free users can browse/filter every tender, but shouldn't be able to open
+  // one that's still outside the free visibility window — not even the
+  // quick view, since that already surfaces contact info and full detail
+  // TenderDetail.tsx would otherwise gate behind the same paywall.
   const openQuickView = (t: Tender) => {
+    if (!isPro && !isWithinFreeVisibilityWindow(t.deadline)) {
+      toast.error(
+        `This tender closes in more than ${FREE_VISIBILITY_DAYS} days — upgrade to Pro to view it now.`,
+        { action: { label: "Upgrade", onClick: () => navigate("/pricing") } }
+      );
+      return;
+    }
     setQuickViewTender(t);
     setQuickViewOpen(true);
   };
@@ -520,7 +543,7 @@ const Tenders = () => {
     }
     if (country !== "all") next = next.eq("country_iso2", country);
     if (subregion !== "all") next = next.eq("subregion", subregion);
-    if (category !== "all") next = next.eq("category", category);
+    if (category !== "all") next = next.regexIMatch("category", categoryMatchPattern(category));
     return next;
   };
 
@@ -563,7 +586,7 @@ const Tenders = () => {
         });
       }
       if (subregion !== "all") countriesQuery = countriesQuery.eq("subregion", subregion);
-      if (category !== "all") countriesQuery = countriesQuery.eq("category", category);
+      if (category !== "all") countriesQuery = countriesQuery.regexIMatch("category", categoryMatchPattern(category));
       countriesQuery = applyDeadlineScope(countriesQuery, deadlineScope);
 
       let categoriesQuery = supabase
@@ -595,9 +618,18 @@ const Tenders = () => {
       const countryIsos = [
         ...new Set((countriesData ?? []).map((d) => d.country_iso2).filter(Boolean) as string[]),
       ];
-      const categories = [
-        ...new Set((categoriesData ?? []).map((d) => d.category).filter(Boolean) as string[]),
-      ].sort();
+      // Raw category strings can bundle several categories together (see
+      // splitCategoryValue) — split each apart before deduping, otherwise
+      // every distinct combination shows up as its own filter option.
+      const categorySeen = new Map<string, string>(); // lowercase -> display casing
+      for (const row of categoriesData ?? []) {
+        if (!row.category) continue;
+        for (const c of splitCategoryValue(row.category)) {
+          const key = c.toLowerCase();
+          if (!categorySeen.has(key)) categorySeen.set(key, c);
+        }
+      }
+      const categories = Array.from(categorySeen.values()).sort((a, b) => a.localeCompare(b));
       return { countryIsos, categories };
     },
     staleTime: 15 * 60_000,
@@ -925,7 +957,7 @@ const Tenders = () => {
                   <FilterControls compact />
                 </div>
                 <Button className="mt-6 w-full" onClick={() => setFilterSheetOpen(false)}>
-                  Apply filters
+                  Done
                 </Button>
               </SheetContent>
             </Sheet>
@@ -1111,7 +1143,10 @@ const Tenders = () => {
             onClick={scrollButton === "top" ? scrollToTop : scrollToBottom}
             className={cn(
               "fixed right-6 z-50 inline-flex h-11 w-11 items-center justify-center rounded-full border border-border/70 bg-primary text-white shadow-lg transition-all hover:bg-primary/40 active:scale-95",
-              user ? "bottom-20 md:bottom-6" : "bottom-6"
+              // Both shells now have a mobile-only bottom nav (PublicBottomNav
+              // on the public shell, PortalBottomNav on AppLayout) that this
+              // button needs to clear; neither has one on desktop.
+              "bottom-20 md:bottom-6"
             )}
             aria-label={scrollButton === "top" ? "Back to top" : "Scroll to bottom"}
           >

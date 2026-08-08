@@ -28,7 +28,7 @@ const FREE_FEATURES = [
 ];
 
 const PRO_FEATURES = [
-  "Everything in Free",
+  "Full search & browse of all tenders",
   "Early visibility - see every tender as soon as it's published, no waiting",
   "Unlimited bookmarks",
   "Unlimited alerts",

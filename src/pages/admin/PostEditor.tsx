@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { DateTimePicker } from "@/components/ui/datetime-picker";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -17,12 +18,15 @@ import {
 import { toast } from "@/components/ui/sonner";
 import { handleDbError } from "@/lib/dbError";
 import { cn } from "@/lib/utils";
+import { formatDateTime } from "@/lib/format";
 import { CoverImageUpload } from "@/components/blog/CoverImageUpload";
 import { RichTextEditor } from "@/components/blog/RichTextEditor";
-import { Loader2, Sparkles, MoreHorizontal, Trash2, ExternalLink } from "@/components/icons";
+import { Sparkles, MoreHorizontal, Trash2, ExternalLink } from "@/components/icons";
 import { POST_CATEGORIES } from "@/lib/blogCategories";
 
-export type DeleteTarget = { id: string; title: string; status: "draft" | "published" };
+export type DeleteTarget = { id: string; title: string; status: "draft" | "scheduled" | "published" };
+
+type PostStatus = "draft" | "scheduled" | "published";
 
 type PostForm = {
   slug: string;
@@ -30,7 +34,8 @@ type PostForm = {
   excerpt: string;
   cover_image_url: string | null;
   content_html: string;
-  status: "draft" | "published";
+  status: PostStatus;
+  scheduled_at: string | null;
   source: "manual" | "ai";
   category: string;
 };
@@ -42,6 +47,7 @@ const EMPTY_FORM: PostForm = {
   cover_image_url: null,
   content_html: "",
   status: "draft",
+  scheduled_at: null,
   source: "manual",
   category: "General",
 };
@@ -57,7 +63,7 @@ const slugify = (s: string) =>
 const fetchPost = async (postId: string): Promise<PostForm> => {
   const { data, error } = await supabase
     .from("posts")
-    .select("slug, title, excerpt, cover_image_url, content_html, status, source, category")
+    .select("slug, title, excerpt, cover_image_url, content_html, status, scheduled_at, source, category")
     .eq("id", postId)
     .maybeSingle();
   if (error) throw new Error(handleDbError(error, "Failed to load post"));
@@ -94,30 +100,44 @@ export default function PostEditor({ postId, onSaved, onCreated, onDeleteRequest
   });
 
   const [form, setForm] = useState<PostForm>(EMPTY_FORM);
+  // Snapshot of the last-saved (or just-loaded) form, so the header can tell
+  // "already published, nothing new to push" apart from "published, but
+  // you've made changes since" — see isDirty below.
+  const [initialForm, setInitialForm] = useState<PostForm>(EMPTY_FORM);
   const [slugTouched, setSlugTouched] = useState(false);
-  const [saving, setSaving] = useState(false);
+  // Tracks which action is in flight (not just whether *something* is), so
+  // clicking "Publish" doesn't also show a busy state on "Save draft".
+  const [savingAction, setSavingAction] = useState<PostStatus | null>(null);
   const loading = !isNew && postQuery.isLoading;
 
   useEffect(() => {
     if (isNew) {
       setForm(EMPTY_FORM);
+      setInitialForm(EMPTY_FORM);
       setSlugTouched(false);
     } else if (postQuery.data) {
       setForm(postQuery.data);
+      setInitialForm(postQuery.data);
       setSlugTouched(true);
     }
   }, [postId, isNew, postQuery.data]);
+
+  const isDirty = JSON.stringify(form) !== JSON.stringify(initialForm);
 
   const setTitle = (title: string) => {
     setForm((f) => ({ ...f, title, slug: slugTouched ? f.slug : slugify(title) }));
   };
 
-  const save = async (status: "draft" | "published") => {
+  const save = async (status: PostStatus) => {
     if (!form.title.trim() || !form.slug.trim()) {
       toast.error("Title and slug are required");
       return;
     }
-    setSaving(true);
+    if (status === "scheduled" && !form.scheduled_at) {
+      toast.error("Pick a publish date first");
+      return;
+    }
+    setSavingAction(status);
     const payload = {
       slug: form.slug.trim(),
       title: form.title.trim(),
@@ -128,62 +148,104 @@ export default function PostEditor({ postId, onSaved, onCreated, onDeleteRequest
       status,
       seo_title: form.title.trim(),
       seo_description: form.excerpt.trim() || null,
-      ...(status === "published" ? { published_at: new Date().toISOString() } : {}),
+      // Only stamped on the transition *into* published, so re-saving an
+      // already-published post ("Update") doesn't keep bumping it to the
+      // top of the blog as if it were newly published.
+      ...(status === "published" && form.status !== "published"
+        ? { published_at: new Date().toISOString() }
+        : {}),
+      // A schedule date only means something for a not-yet-published post —
+      // clear it once published (immediately or via the cron flip) so it
+      // doesn't linger as stale info.
+      scheduled_at: status === "scheduled" ? form.scheduled_at : null,
     };
 
     const { data, error } = isNew
       ? await supabase.from("posts").insert(payload).select("id").single()
       : await supabase.from("posts").update(payload).eq("id", postId).select("id").single();
 
-    setSaving(false);
+    setSavingAction(null);
     if (error) {
       toast.error(handleDbError(error));
       return;
     }
 
-    toast.success(status === "published" ? "Post published" : "Draft saved");
-    const savedForm = { ...form, status };
+    toast.success(
+      status === "published"
+        ? "Post published"
+        : status === "scheduled"
+          ? `Post scheduled for ${formatDateTime(payload.scheduled_at)}`
+          : "Draft saved"
+    );
+    const savedForm = { ...form, status, scheduled_at: payload.scheduled_at };
     setForm(savedForm);
+    setInitialForm(savedForm);
     const savedId = isNew ? data.id : postId!;
     queryClient.setQueryData(["admin-post", savedId], savedForm);
     onSaved();
     if (isNew && data) onCreated(data.id);
   };
 
+  // A schedule date only applies while the post isn't live yet — see the
+  // sidebar field, hidden once published. Publishing an already-published
+  // post again ("Update") is only worth doing — and only enabled — once
+  // there's something new to push; otherwise the button would just be a
+  // no-op resave with a misleading "Publish" label.
+  const hasScheduleDate = form.status !== "published" && !!form.scheduled_at;
+  const primaryStatus: PostStatus = hasScheduleDate ? "scheduled" : "published";
+  const primaryLabel = hasScheduleDate
+    ? "Schedule"
+    : form.status === "published"
+      ? isDirty
+        ? "Update"
+        : "Published"
+      : "Publish";
+  const primaryDisabled =
+    savingAction !== null || loading || (form.status === "published" && !isDirty && !hasScheduleDate);
+  const primaryBusyLabel =
+    primaryStatus === "scheduled" ? "Scheduling…" : form.status === "published" ? "Updating…" : "Publishing…";
+
   return (
-    <div className="flex h-full max-h-[90vh] flex-col">
+    <div className="flex h-full max-h-[90vh] mb-5 flex-col">
       {/* HEADER — sticky so Save/Publish stay reachable while the body scrolls */}
-      <div className="shrink-0 border-b border-border pl-6 pr-14 py-4 flex items-center justify-between gap-4">
+      <div className="shrink-0 pl-7 pr-14 py-5 flex items-center justify-between gap-4">
         <div className="min-w-0">
-          <DialogTitle className="text-base font-semibold">{isNew ? "New post" : "Edit post"}</DialogTitle>
-          <div className="mt-1 flex items-center gap-2">
+          <DialogTitle className="text-lg font-semibold tracking-tight">{isNew ? "New post" : "Edit post"}</DialogTitle>
+          <div className="mt-1.5 flex items-center gap-2">
             {!isNew && !loading && (
-              <span
-                className={cn(
-                  "inline-block px-1.5 py-0.5 rounded border text-[10px] capitalize",
-                  form.status === "published"
-                    ? "bg-success/15 text-success border-success/30"
-                    : "bg-muted text-muted-foreground border-border"
+              <>
+                <span
+                  className={cn(
+                    "inline-block px-2 py-0.5 rounded-full border text-[10px] font-medium capitalize",
+                    form.status === "published"
+                      ? "bg-success/15 text-success border-success/30"
+                      : form.status === "scheduled"
+                        ? "bg-warning/15 text-warning border-warning/30"
+                        : "bg-muted text-muted-foreground border-border"
+                  )}
+                >
+                  {form.status}
+                </span>
+                {form.status === "scheduled" && form.scheduled_at && (
+                  <span className="text-xs text-muted-foreground">
+                    {formatDateTime(form.scheduled_at)}
+                  </span>
                 )}
-              >
-                {form.status}
-              </span>
+              </>
             )}
             {form.source === "ai" && !loading && (
               <span className="inline-flex items-center gap-1 text-xs text-primary">
-                <Sparkles className="h-3 w-3" /> AI-generated — review before publishing
+                <Sparkles className="h-3 w-3" /> AI-generated - review before publishing
               </span>
             )}
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <Button variant="outline" size="sm" disabled={saving || loading} onClick={() => save("draft")}>
-            {saving && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
-            Save draft
+          <Button variant="outline" size="sm" disabled={savingAction !== null || loading} onClick={() => save("draft")}>
+            {savingAction === "draft" ? "Saving…" : "Save draft"}
           </Button>
-          <Button size="sm" disabled={saving || loading} onClick={() => save("published")}>
-            {saving && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
-            Publish
+          <Button size="sm" disabled={primaryDisabled} onClick={() => save(primaryStatus)}>
+            {savingAction === primaryStatus ? primaryBusyLabel : primaryLabel}
           </Button>
           {!isNew && (
             <DropdownMenu>
@@ -216,15 +278,18 @@ export default function PostEditor({ postId, onSaved, onCreated, onDeleteRequest
         </div>
       </div>
 
-      {/* BODY */}
-      <div className="flex-1 overflow-y-auto px-6 py-5">
+      {/* BODY — the rich text editor scrolls internally (fixed height), but
+          the sidebar (category/permalink/excerpt/cover image) can still be
+          taller than that on its own, so this wrapper needs to keep
+          scrolling too or that content gets clipped with no way to reach it. */}
+      <div className="flex-1 overflow-y-auto px-7 ">
         {loading ? (
-          <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+          <div className="grid gap-10 lg:grid-cols-[1fr_300px]">
             <div className="space-y-4">
               <Skeleton className="h-11 w-full" />
               <Skeleton className="h-72 w-full" />
             </div>
-            <div className="space-y-4">
+            <div className="space-y-5">
               <FieldSkeleton />
               <FieldSkeleton labelWidth="w-10" />
               <FieldSkeleton labelWidth="w-14" />
@@ -235,14 +300,14 @@ export default function PostEditor({ postId, onSaved, onCreated, onDeleteRequest
             </div>
           </div>
         ) : (
-          <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+          <div className="grid gap-10 lg:grid-cols-[1fr_300px]">
             {/* Main column — the two things that matter most: headline & body */}
-            <div className="space-y-4 min-w-0">
+            <div className="space-y-5 min-w-0">
               <Input
                 value={form.title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Post title"
-                className="h-auto border-0 px-0 text-2xl font-semibold shadow-none placeholder:text-muted-foreground/50 focus-visible:ring-0"
+                className="h-auto border-0 px-0 text-3xl font-semibold tracking-tight shadow-none placeholder:text-muted-foreground/40 focus-visible:ring-0"
               />
               <RichTextEditor
                 value={form.content_html}
@@ -251,9 +316,9 @@ export default function PostEditor({ postId, onSaved, onCreated, onDeleteRequest
             </div>
 
             {/* Sidebar — metadata */}
-            <div className="space-y-4">
+            <div className="space-y-5">
               <div className="space-y-1.5">
-                <Label>Category</Label>
+                <Label className="text-xs font-medium text-muted-foreground">Category</Label>
                 <Select
                   value={form.category}
                   onValueChange={(category) => setForm((f) => ({ ...f, category }))}
@@ -271,38 +336,24 @@ export default function PostEditor({ postId, onSaved, onCreated, onDeleteRequest
                 </Select>
               </div>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="slug">Permalink</Label>
-                <div className="flex items-stretch rounded-md border border-input bg-muted/30 overflow-hidden focus-within:ring-2 focus-within:ring-ring">
-                  <span className="flex items-center px-2.5 text-xs text-muted-foreground bg-muted/60 border-r border-input shrink-0">
-                    /blog/
-                  </span>
-                  <input
-                    id="slug"
-                    value={form.slug}
-                    onChange={(e) => {
-                      setSlugTouched(true);
-                      setForm((f) => ({ ...f, slug: slugify(e.target.value) }));
-                    }}
-                    placeholder="post-slug"
-                    className="min-w-0 flex-1 bg-transparent px-2 py-2 text-sm outline-none"
+              {form.status !== "published" && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium text-muted-foreground">Schedule (optional)</Label>
+                  <DateTimePicker
+                    value={form.scheduled_at}
+                    onChange={(iso) => setForm((f) => ({ ...f, scheduled_at: iso }))}
+                    placeholder="Publish immediately"
                   />
+                  {form.scheduled_at && (
+                    <p className="text-[11px] text-muted-foreground">
+                      Publishes automatically {formatDateTime(form.scheduled_at)}
+                    </p>
+                  )}
                 </div>
-              </div>
+              )}
 
               <div className="space-y-1.5">
-                <Label htmlFor="excerpt">Excerpt</Label>
-                <Textarea
-                  id="excerpt"
-                  value={form.excerpt}
-                  onChange={(e) => setForm((f) => ({ ...f, excerpt: e.target.value }))}
-                  rows={3}
-                  placeholder="Short summary shown on the blog index and in search results"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label>Cover image</Label>
+                <Label className="text-xs font-medium text-muted-foreground">Cover image</Label>
                 <CoverImageUpload
                   value={form.cover_image_url}
                   onChange={(url) => setForm((f) => ({ ...f, cover_image_url: url }))}

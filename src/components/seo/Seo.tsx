@@ -1,9 +1,9 @@
 import { Helmet } from "react-helmet-async";
+import { LOGO_URL, SITE_NAME } from "@/lib/brand";
 
 const DEFAULT_DESCRIPTION =
   "Search, track, and get alerted on procurement tenders across Africa. Free to browse — no account required.";
-const DEFAULT_IMAGE =
-  "https://luykyredvhhcamcmgahp.supabase.co/storage/v1/object/public/Company%20assets/Gemini_Generated_Image_k92dq5k92dq5k92d-removebg-preview.png";
+const DEFAULT_IMAGE = LOGO_URL;
 
 export const Seo = ({
   title,
@@ -20,7 +20,7 @@ export const Seo = ({
   type?: "website" | "article";
   noIndex?: boolean;
 }) => {
-  const fullTitle = `${title} — Tender Compass`;
+  const fullTitle = `${title} — ${SITE_NAME}`;
 
   return (
     <Helmet>

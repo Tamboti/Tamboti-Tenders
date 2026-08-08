@@ -40,6 +40,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { User } from "iconoir-react";
 import { trackEvent } from "@/lib/analytics";
+import { splitIntoParagraphs } from "@/lib/textFormat";
 
 /* ─── tiny helpers ──────────────────────────────────────────────── */
 
@@ -152,6 +153,7 @@ export const TenderDetail = ({
   const [translationCache, setTranslationCache] = useState<
     Record<string, { title: string; summary: string; description: string | null }>
   >({});
+  const [descExpanded, setDescExpanded] = useState(false);
 
   useEffect(() => {
     setStatus(tender.workflow_status);
@@ -164,6 +166,7 @@ export const TenderDetail = ({
     setSummaryLang("en");
     setSummaryError(null);
     setTranslationCache({});
+    setDescExpanded(false);
   }, [tender.id, tender.translation_status]);
 
   useEffect(() => {
@@ -331,6 +334,11 @@ export const TenderDetail = ({
   // translate for the description (translatedEntry.description is null).
   const displayedDescription =
     summaryLang === "en" ? englishOrOriginalDescription : translatedEntry?.description ?? englishOrOriginalDescription;
+  // Scraped descriptions are frequently one giant run-on block (see
+  // splitIntoParagraphs) — collapsed by default past a certain length so the
+  // page isn't dominated by a wall of text, with a "Show more" to expand.
+  const descriptionParagraphs = displayedDescription ? splitIntoParagraphs(displayedDescription) : [];
+  const isLongDescription = descriptionParagraphs.length > 2 || (displayedDescription?.length ?? 0) > 480;
 
   /* Build only the fields that have values */
   const metaFields: { icon?: any; label: string; value: React.ReactNode }[] = [
@@ -434,7 +442,10 @@ export const TenderDetail = ({
           </div>
 
           <div className="flex shrink-0 items-center gap-2">
-            {tender.source_url && tender.source !== "tanzania" && (
+            {/* Gated the same as the summary/description below — otherwise a
+                free user could skip the paywall entirely via the original
+                posting. */}
+            {!gated && tender.source_url && tender.source !== "tanzania" && (
               <a
                 href={tender.source_url}
                 target="_blank"
@@ -595,9 +606,37 @@ export const TenderDetail = ({
                     </span>
                   )}
                 </h3>
-                <p className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
-                  {displayedDescription}
-                </p>
+
+                <div className="relative">
+                  <div
+                    className={cn(
+                      "space-y-3",
+                      !descExpanded && isLongDescription && "max-h-40 overflow-hidden"
+                    )}
+                  >
+                    {descriptionParagraphs.map((paragraph, i) => (
+                      <p
+                        key={i}
+                        className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground"
+                      >
+                        {paragraph}
+                      </p>
+                    ))}
+                  </div>
+                  {!descExpanded && isLongDescription && (
+                    <div className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-background to-transparent" />
+                  )}
+                </div>
+
+                {isLongDescription && (
+                  <button
+                    type="button"
+                    onClick={() => setDescExpanded((e) => !e)}
+                    className="text-sm font-medium text-primary hover:underline"
+                  >
+                    {descExpanded ? "Show less" : "Show more"}
+                  </button>
+                )}
               </div>
             </>
           )}

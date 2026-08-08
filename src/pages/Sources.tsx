@@ -3,9 +3,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { toast } from "@/components/ui/sonner";
-import { Loader2, Play, Globe, CheckCircle2, XCircle, Clock3, AlertTriangle } from "lucide-react";
+import { Loader2, Play, Globe, CheckCircle2, XCircle, Clock3, AlertTriangle, FileText } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { handleDbError } from "@/lib/dbError";
+import { StatTile } from "@/components/analytics/StatTile";
 
 type ScrapeLog = {
   id: string;
@@ -31,6 +32,9 @@ const SCRAPERS: Scraper[] = [
   { fn: "Undp-scraper", label: "UNDP Scraper", country: "Global", source: "undp" },
 ];
 
+const isSuccessStatus = (s: string) => ["success", "ok", "completed"].includes(s.toLowerCase());
+const isFailureStatus = (s: string) => !isSuccessStatus(s) && !["running", "pending"].includes(s.toLowerCase());
+
 const statusVariant = (s: string) => {
   const v = s.toLowerCase();
   if (v === "success" || v === "ok" || v === "completed") return "bg-success/15 text-success border-success/30";
@@ -52,6 +56,7 @@ export default function Sources() {
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState<Record<string, boolean>>({});
   const [unmappedCountries, setUnmappedCountries] = useState<string[]>([]);
+  const [totalTenders, setTotalTenders] = useState<number | null>(null);
 
   const loadLogs = async () => {
     const { data, error } = await supabase
@@ -68,6 +73,13 @@ export default function Sources() {
   };
 
   useEffect(() => { loadLogs(); }, []);
+
+  useEffect(() => {
+    supabase
+      .from("tenders")
+      .select("id", { count: "exact", head: true })
+      .then(({ count }) => setTotalTenders(count ?? 0));
+  }, []);
 
   // Early warning that a scraper started emitting a country spelling that
   // isn't in country_reference yet — those tenders still show up in the
@@ -121,6 +133,11 @@ export default function Sources() {
     }
   };
 
+  // Derived from the same 50 most-recent logs the table below already shows
+  // — no extra query needed for these two.
+  const lastSuccess = logs.find((l) => isSuccessStatus(l.status) && l.ran_at);
+  const failedRunCount = logs.filter((l) => isFailureStatus(l.status)).length;
+
   return (
     <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6 overflow-x-hidden">
 
@@ -132,7 +149,7 @@ export default function Sources() {
             Review Scapers execution history.
           </p>
         </div>
-        {/* ── Enhance tender button 
+        {/* ── Enhance tender button
         <Button
           variant="outline"
           size="sm"
@@ -167,7 +184,17 @@ export default function Sources() {
          */}
       </div>
 
-      
+      {/* ── At-a-glance metrics ── */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <StatTile label="Active sources" value={SCRAPERS.length} icon={Globe} />
+        <StatTile label="Total tenders" value={totalTenders ?? "—"} icon={FileText} />
+        <StatTile
+          label="Last successful run"
+          value={lastSuccess?.ran_at ? formatDistanceToNow(new Date(lastSuccess.ran_at), { addSuffix: true }) : "—"}
+          icon={CheckCircle2}
+        />
+        <StatTile label="Failed runs (last 50)" value={failedRunCount} icon={AlertTriangle} />
+      </div>
 
       {/* ── Scraper cards ──
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

@@ -25,6 +25,7 @@ import PostsAdmin from "./pages/admin/PostsAdmin";
 import Analytics from "./pages/admin/Analytics";
 import NotFound from "./pages/NotFound.tsx";
 import { RouteTracker } from "@/components/analytics/RouteTracker";
+import { ScrollToTop } from "@/components/layout/ScrollToTop";
 
 const queryClient = new QueryClient();
 
@@ -37,6 +38,7 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
             <AuthProvider>
+              <ScrollToTop />
               <RouteTracker />
               <Routes>
                 <Route path="/login" element={<Login />} />
