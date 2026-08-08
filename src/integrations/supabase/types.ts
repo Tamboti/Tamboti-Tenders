@@ -95,16 +95,19 @@ export type Database = {
       alert_sent_tenders: {
         Row: {
           alert_preference_id: string
+          reminder_stage: number
           sent_at: string
           tender_id: string
         }
         Insert: {
           alert_preference_id: string
+          reminder_stage?: number
           sent_at?: string
           tender_id: string
         }
         Update: {
           alert_preference_id?: string
+          reminder_stage?: number
           sent_at?: string
           tender_id?: string
         }
@@ -203,6 +206,7 @@ export type Database = {
           excerpt: string | null
           id: string
           published_at: string | null
+          scheduled_at: string | null
           seo_description: string | null
           seo_title: string | null
           slug: string
@@ -220,6 +224,7 @@ export type Database = {
           excerpt?: string | null
           id?: string
           published_at?: string | null
+          scheduled_at?: string | null
           seo_description?: string | null
           seo_title?: string | null
           slug: string
@@ -237,6 +242,7 @@ export type Database = {
           excerpt?: string | null
           id?: string
           published_at?: string | null
+          scheduled_at?: string | null
           seo_description?: string | null
           seo_title?: string | null
           slug?: string
@@ -605,6 +611,8 @@ export type Database = {
     }
     Functions: {
       is_admin: { Args: { _uid: string }; Returns: boolean }
+      is_pro_user: { Args: { _user_id: string }; Returns: boolean }
+      publish_scheduled_posts: { Args: never; Returns: undefined }
       set_workflow_status: {
         Args: { _status: string; _tender_id: string }
         Returns: undefined

@@ -7,7 +7,13 @@ import { PortalBottomNav } from "./PortalBottomNav";
 export const AppLayout = () => {
   const location = useLocation();
   return (
-    <div className="flex h-screen min-h-0 overflow-hidden bg-background">
+    // h-dvh, not h-screen — 100vh on mobile is sized against the browser's
+    // largest possible viewport (toolbar collapsed), not what's actually
+    // visible. With the toolbar showing (the normal state), that made this
+    // div taller than the real screen, so the whole page scrolled instead of
+    // just <main>, dragging TopBar/PortalBottomNav in and out of view along
+    // with it. dvh tracks the actual visible viewport instead.
+    <div className="flex h-dvh min-h-0 overflow-hidden bg-background">
       <Sidebar />
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col border-l border-border">

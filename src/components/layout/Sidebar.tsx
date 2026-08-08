@@ -246,7 +246,7 @@ export const Sidebar = ({ mobile = false, onNavigate }: SidebarProps) => {
     <motion.aside
       animate={{ width: collapsed ? 72 : 240 }}
       transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
-      className="hidden h-screen flex-col overflow-hidden border-r border-sidebar-border bg-sidebar-background py-2 md:flex"
+      className="hidden h-dvh flex-col overflow-hidden border-r border-sidebar-border bg-sidebar-background py-2 md:flex"
     >
       {content}
     </motion.aside>

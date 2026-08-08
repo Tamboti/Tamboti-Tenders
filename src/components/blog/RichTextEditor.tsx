@@ -55,7 +55,7 @@ export const RichTextEditor = ({
   useEffect(() => {
     if (!editor) return;
     if (value !== editor.getHTML()) {
-      editor.commands.setContent(value, false);
+      editor.commands.setContent(value, { emitUpdate: false });
     }
   }, [value, editor]);
 

@@ -146,13 +146,13 @@ export const TenderDetail = ({
   // ── English / Original toggle (title + description only) ──
   const [titleView, setTitleView] = useState<"en" | "original">("en");
 
-  // ── Output language picker (drives both the AI summary and the Description) ──
+  // ── Output language picker (drives the title + AI summary; translate-tender
+  // only translates those two — Description stays on the English/Original
+  // toggle above) ──
   const [summaryLang, setSummaryLang] = useState("en");
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [summaryError, setSummaryError] = useState<string | null>(null);
-  const [translationCache, setTranslationCache] = useState<
-    Record<string, { title: string; summary: string; description: string | null }>
-  >({});
+  const [translationCache, setTranslationCache] = useState<Record<string, { title: string; summary: string }>>({});
   const [descExpanded, setDescExpanded] = useState(false);
 
   useEffect(() => {
@@ -178,30 +178,21 @@ export const TenderDetail = ({
     if (translationCache[summaryLang]) return;
 
     let cancelled = false;
-    // Not every tender has a description yet — a cache row only counts as
-    // complete if it also has one whenever this tender does.
-    const needsDescription = !!tender.description_en;
     const run = async () => {
       setSummaryLoading(true);
       setSummaryError(null);
 
       const { data: cached, error: cacheError } = await supabase
         .from("tender_translations")
-        .select("title, summary, description")
+        .select("title, summary")
         .eq("tender_id", tender.id)
         .eq("lang", summaryLang)
         .maybeSingle();
 
       if (cancelled) return;
 
-      const cacheComplete =
-        !cacheError && !!cached?.title && !!cached?.summary && (!needsDescription || !!cached?.description);
-
-      if (cacheComplete) {
-        setTranslationCache((c) => ({
-          ...c,
-          [summaryLang]: { title: cached!.title!, summary: cached!.summary!, description: cached!.description ?? null },
-        }));
+      if (!cacheError && cached?.title && cached?.summary) {
+        setTranslationCache((c) => ({ ...c, [summaryLang]: { title: cached.title!, summary: cached.summary! } }));
         setSummaryLoading(false);
         return;
       }
@@ -224,10 +215,7 @@ export const TenderDetail = ({
       }
 
       if (data?.title && data?.summary) {
-        setTranslationCache((c) => ({
-          ...c,
-          [summaryLang]: { title: data.title, summary: data.summary, description: data.description ?? null },
-        }));
+        setTranslationCache((c) => ({ ...c, [summaryLang]: { title: data.title, summary: data.summary } }));
       }
     };
 
@@ -235,7 +223,7 @@ export const TenderDetail = ({
     return () => {
       cancelled = true;
     };
-  }, [summaryLang, tender.id, tender.summary_en, tender.description_en, translationCache]);
+  }, [summaryLang, tender.id, tender.summary_en, translationCache]);
 
   useEffect(() => {
     if (!user) {
@@ -320,20 +308,21 @@ export const TenderDetail = ({
   // Original" stops making sense once the text on screen is e.g. Portuguese.
   const showTitleToggle = nonEnglishSource && hasEnglishVersion && summaryLang === "en";
   const effectiveTitleView = showTitleToggle ? titleView : "original";
-  const displayedTitle = effectiveTitleView === "en" ? tender.title_en ?? tender.title : tender.title;
+  const englishOrOriginalTitle = effectiveTitleView === "en" ? tender.title_en ?? tender.title : tender.title;
   const englishOrOriginalDescription =
     effectiveTitleView === "en" ? tender.description_en ?? tender.description : tender.description;
   const showFailedNote = nonEnglishSource && tender.translation_status === "failed";
   const showPendingNote = nonEnglishSource && tender.translation_status === "pending" && !hasEnglishVersion;
 
-  // ── Derived output-language display values (summary + description share
-  // one language picker, see the header) ──
+  // ── Derived output-language display values (title + summary share one
+  // language picker, see the header — translate-tender doesn't cover
+  // Description, which stays on the English/Original toggle above) ──
   const translatedEntry = translationCache[summaryLang];
+  // Falls back to the English/Original title while a non-English translation
+  // is still loading (or failed) — only swaps once it's actually cached.
+  const displayedTitle = summaryLang === "en" ? englishOrOriginalTitle : translatedEntry?.title ?? englishOrOriginalTitle;
   const displayedSummary = summaryLang === "en" ? tender.summary_en : translatedEntry?.summary ?? tender.summary_en;
-  // Falls back to the English/Original text when this tender had nothing to
-  // translate for the description (translatedEntry.description is null).
-  const displayedDescription =
-    summaryLang === "en" ? englishOrOriginalDescription : translatedEntry?.description ?? englishOrOriginalDescription;
+  const displayedDescription = englishOrOriginalDescription;
   // Scraped descriptions are frequently one giant run-on block (see
   // splitIntoParagraphs) — collapsed by default past a certain length so the
   // page isn't dominated by a wall of text, with a "Show more" to expand.
@@ -600,11 +589,6 @@ export const TenderDetail = ({
               <div className="space-y-3">
                 <h3 className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
                   Description
-                  {summaryLang !== "en" && translatedEntry?.description && (
-                    <span className="ml-1.5 normal-case tracking-normal text-muted-foreground/70">
-                      ({OUTPUT_LANGUAGES.find((l) => l.code === summaryLang)?.nativeName})
-                    </span>
-                  )}
                 </h3>
 
                 <div className="relative">
