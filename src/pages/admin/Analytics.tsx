@@ -11,7 +11,6 @@ import {
   CartesianGrid,
 } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
-import type { PostgrestFilterBuilder } from "@supabase/postgrest-js";
 import { handleDbError } from "@/lib/dbError";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -56,7 +55,7 @@ const bucketByDay = (isoDates: string[], days: number) => {
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const excludingAdmins = <T,>(query: PostgrestFilterBuilder<any, any, T>, adminIds: string[]) =>
+const excludingAdmins = (query: any, adminIds: string[]) =>
   adminIds.length > 0 ? query.not("user_id", "in", `(${adminIds.join(",")})`) : query;
 
 // Single-series trend — no legend needed (the card title names the series);

@@ -332,7 +332,7 @@ const SkeletonTableBody = ({ showAdminCol }: { showAdminCol: boolean }) => (
 const SkeletonCards = () => (
   <div className="space-y-3">
     {Array.from({ length: 6 }).map((_, i) => (
-      <div key={i} className="animate-pulse rounded-2xl border border-border/70 bg-card p-4 shadow-sm space-y-3">
+      <div key={i} className="animate-pulse rounded-lg border border-border/70 bg-card p-4 shadow-sm space-y-3">
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 space-y-2">
             <div className="h-3.5 w-4/5 rounded-md bg-muted" />
@@ -1053,7 +1053,7 @@ const Tenders = () => {
           {loading ? (
             <SkeletonCards />
           ) : tenders.length === 0 ? (
-            <div className="flex flex-col items-center gap-3 rounded-2xl border border-border/70 bg-card py-16 px-4 text-center shadow-sm">
+            <div className="flex flex-col items-center gap-3 rounded-lg border border-border/70 bg-card py-16 px-4 text-center shadow-sm">
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-muted/60">
                 <TrendingUp className="h-6 w-6 text-muted-foreground/50" />
               </div>
@@ -1072,13 +1072,15 @@ const Tenders = () => {
                   t={t}
                   idx={idx}
                   onClick={() => openQuickView(t)}
+                  isBookmarked={bookmarks.has(t.id)}
+                  onToggleBookmark={(e) => toggleBookmark(t.id, e)}
                 />
               ))}
             </div>
           )}
 
           {/* Mobile Pagination */}
-          <div className="mt-3 flex items-center justify-between rounded-2xl border border-border/70 bg-card px-4 py-3 shadow-sm">
+          <div className="mt-3 flex items-center justify-between rounded-lg border border-border/70 bg-card px-4 py-3 shadow-sm">
             <span className="text-xs text-muted-foreground tabular-nums">
               {total === 0
                 ? "No results"

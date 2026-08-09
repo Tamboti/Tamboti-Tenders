@@ -206,12 +206,15 @@ export default function PostEditor({ postId, onSaved, onCreated, onDeleteRequest
     primaryStatus === "scheduled" ? "Scheduling…" : form.status === "published" ? "Updating…" : "Publishing…";
 
   return (
-    <div className="flex h-full max-h-[90vh] mb-5 flex-col">
-      {/* HEADER — sticky so Save/Publish stay reachable while the body scrolls */}
-      <div className="shrink-0 pl-7 pr-14 py-5 flex items-center justify-between gap-4">
+    <div className="flex h-full flex-col">
+      {/* HEADER — stacks on mobile (title/badges, then actions below) so a
+          long "AI-generated" note and the action buttons never fight for the
+          same row and collide; sits side-by-side again from sm+. Sticky so
+          Save/Publish stay reachable while the body scrolls. */}
+      <div className="shrink-0 flex flex-col gap-3 pl-4 pr-10 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:pl-7 sm:pr-14 sm:py-5">
         <div className="min-w-0">
           <DialogTitle className="text-lg font-semibold tracking-tight">{isNew ? "New post" : "Edit post"}</DialogTitle>
-          <div className="mt-1.5 flex items-center gap-2">
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
             {!isNew && !loading && (
               <>
                 <span
@@ -235,23 +238,29 @@ export default function PostEditor({ postId, onSaved, onCreated, onDeleteRequest
             )}
             {form.source === "ai" && !loading && (
               <span className="inline-flex items-center gap-1 text-xs text-primary">
-                <Sparkles className="h-3 w-3" /> AI-generated - review before publishing
+                <Sparkles className="h-3 w-3 shrink-0" /> AI-generated - review before publishing
               </span>
             )}
           </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <Button variant="outline" size="sm" disabled={savingAction !== null || loading} onClick={() => save("draft")}>
+        <div className="flex items-center gap-2 sm:shrink-0">
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex-1 sm:flex-initial"
+            disabled={savingAction !== null || loading}
+            onClick={() => save("draft")}
+          >
             {savingAction === "draft" ? "Saving…" : "Save draft"}
           </Button>
-          <Button size="sm" disabled={primaryDisabled} onClick={() => save(primaryStatus)}>
+          <Button size="sm" className="flex-1 sm:flex-initial" disabled={primaryDisabled} onClick={() => save(primaryStatus)}>
             {savingAction === primaryStatus ? primaryBusyLabel : primaryLabel}
           </Button>
           {!isNew && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
-                  className="h-8 w-8 inline-flex items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                  className="h-8 w-8 shrink-0 inline-flex items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
                   aria-label="More actions"
                   disabled={loading}
                 >
@@ -282,9 +291,9 @@ export default function PostEditor({ postId, onSaved, onCreated, onDeleteRequest
           the sidebar (category/permalink/excerpt/cover image) can still be
           taller than that on its own, so this wrapper needs to keep
           scrolling too or that content gets clipped with no way to reach it. */}
-      <div className="flex-1 overflow-y-auto px-7 ">
+      <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-7 sm:py-0">
         {loading ? (
-          <div className="grid gap-10 lg:grid-cols-[1fr_300px]">
+          <div className="grid gap-6 lg:grid-cols-[1fr_300px] lg:gap-10">
             <div className="space-y-4">
               <Skeleton className="h-11 w-full" />
               <Skeleton className="h-72 w-full" />
@@ -300,14 +309,14 @@ export default function PostEditor({ postId, onSaved, onCreated, onDeleteRequest
             </div>
           </div>
         ) : (
-          <div className="grid gap-10 lg:grid-cols-[1fr_300px]">
+          <div className="grid gap-6 lg:grid-cols-[1fr_300px] lg:gap-10">
             {/* Main column — the two things that matter most: headline & body */}
             <div className="space-y-5 min-w-0">
               <Input
                 value={form.title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Post title"
-                className="h-auto border-0 px-0 text-3xl font-semibold tracking-tight shadow-none placeholder:text-muted-foreground/40 focus-visible:ring-0"
+                className="h-auto border-0 px-0 text-2xl font-semibold tracking-tight shadow-none placeholder:text-muted-foreground/40 focus-visible:ring-0 sm:text-3xl"
               />
               <RichTextEditor
                 value={form.content_html}

@@ -20,27 +20,26 @@ const Shimmer = ({ className }: { className?: string }) => (
 /* ─── Skeleton ───────────────────────────────────────────────────── */
 
 const TenderDetailSkeleton = () => (
-  <div className="space-y-6 pb-2">
-    {/* Header */}
-    <div className="space-y-3">
+  <div className="space-y-8 pb-2">
+    {/* Utility row */}
+    <div className="flex items-center justify-between gap-3">
       <div className="flex items-center gap-2">
-        <Shimmer className="h-5 w-20 rounded-full" />
-        <Shimmer className="h-4 w-28" />
+        <Shimmer className="h-7 w-24 rounded-full" />
         <Shimmer className="h-4 w-16" />
       </div>
-      <Shimmer className="h-6 w-4/5" />
-      <Shimmer className="h-4 w-2/3" />
-      <div className="flex items-center gap-2 pt-1">
-        <Shimmer className="h-8 w-[160px] rounded-md" />
-        <Shimmer className="h-8 w-[100px] rounded-md" />
-      </div>
+      <Shimmer className="h-8 w-[100px] rounded-md" />
     </div>
 
-    <hr className="border-border/60" />
+    {/* Title */}
+    <div className="space-y-3">
+      <Shimmer className="h-8 w-full" />
+      <Shimmer className="h-8 w-3/4" />
+      <Shimmer className="h-8 w-[160px] rounded-md" />
+    </div>
 
-    {/* Meta grid */}
-    <div className="grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-3 lg:grid-cols-4">
-      {Array.from({ length: 8 }).map((_, i) => (
+    {/* Meta */}
+    <div className="grid grid-cols-2 gap-x-8 gap-y-6 border-y border-border/60 py-6 sm:grid-cols-3">
+      {Array.from({ length: 6 }).map((_, i) => (
         <div key={i} className="flex flex-col gap-1.5">
           <Shimmer className="h-3 w-20" />
           <Shimmer className="h-4 w-28" />
@@ -48,37 +47,25 @@ const TenderDetailSkeleton = () => (
       ))}
     </div>
 
-    <hr className="border-border/60" />
-
-    {/* AI Summary */}
-    <div className="space-y-3">
-      <Shimmer className="h-3 w-20" />
-      <div className="rounded-xl border border-border bg-muted/20 px-4 py-3 space-y-2">
-        <Shimmer className="h-3.5 w-full" />
-        <Shimmer className="h-3.5 w-[90%]" />
-        <Shimmer className="h-3.5 w-[70%]" />
+    {/* Summary */}
+    <div className="space-y-2.5">
+      <Shimmer className="h-3 w-16" />
+      <div className="space-y-2">
+        <Shimmer className="h-4 w-full" />
+        <Shimmer className="h-4 w-[90%]" />
+        <Shimmer className="h-4 w-[70%]" />
       </div>
     </div>
-
-    <hr className="border-border/60" />
 
     {/* Description */}
-    <div className="space-y-3">
+    <div className="space-y-2.5">
       <Shimmer className="h-3 w-24" />
       <div className="space-y-2">
-        <Shimmer className="h-3.5 w-full" />
-        <Shimmer className="h-3.5 w-full" />
-        <Shimmer className="h-3.5 w-[80%]" />
-        <Shimmer className="h-3.5 w-[55%]" />
+        <Shimmer className="h-4 w-full" />
+        <Shimmer className="h-4 w-full" />
+        <Shimmer className="h-4 w-[80%]" />
+        <Shimmer className="h-4 w-[55%]" />
       </div>
-    </div>
-
-    <hr className="border-border/60" />
-
-    {/* Notes */}
-    <div className="space-y-3">
-      <Shimmer className="h-3 w-28" />
-      <Shimmer className="h-16 w-full rounded-xl" />
     </div>
 
     {/* Footer */}

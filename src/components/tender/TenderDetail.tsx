@@ -1,6 +1,5 @@
 import { Tender, WORKFLOW_STATUSES, STATUS_COLORS } from "@/lib/types";
 import { formatCurrency, formatDate, formatDateTime, daysUntil } from "@/lib/format";
-import { StatusBadge } from "@/components/StatusBadge";
 import {
   Select,
   SelectContent,
@@ -13,21 +12,7 @@ import { SourceLanguageBadge, TranslationStatusBadge } from "./LanguageBadges";
 import { getLanguageName, isNonEnglishSource, OUTPUT_LANGUAGES } from "@/lib/tenderLanguage";
 import { resolveCountryDisplay } from "@/lib/countries";
 import { useCountryReference } from "@/hooks/use-country-reference";
-import {
-  ExternalLink,
-  Calendar,
-  MapPin,
-  Building2,
-  Tag,
-  DollarSign,
-  Clock,
-  Layers,
-  Globe,
-  Sparkles,
-  Bookmark,
-  BookmarkCheck,
-  Lock,
-} from "@/components/icons";
+import { ExternalLink, Globe, Bookmark, BookmarkCheck, Lock } from "@/components/icons";
 import { supabase } from "@/integrations/supabase/client";
 import { handleDbError } from "@/lib/dbError";
 import { useAuth } from "@/contexts/AuthContext";
@@ -38,70 +23,28 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { User } from "iconoir-react";
 import { trackEvent } from "@/lib/analytics";
 import { splitIntoParagraphs } from "@/lib/textFormat";
 
 /* ─── tiny helpers ──────────────────────────────────────────────── */
 
-const Field = ({
-  icon: Icon,
+// Plain label-over-value pairs, no icons or card chrome — this is meant to
+// read like a document's front-matter (procurement-notice style), not a UI
+// panel of stat tiles.
+const MetaItem = ({
   label,
   value,
+  valueClassName,
 }: {
-  icon?: React.ComponentType<{ className?: string }>;
   label: string;
   value: React.ReactNode;
+  valueClassName?: string;
 }) => (
-  <div className="flex flex-col gap-0.5">
-    <span className="flex items-center gap-1 text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
-      {Icon && <Icon className="h-3 w-3 shrink-0" />}
-      {label}
-    </span>
-    <span className="text-[14px] font-medium text-foreground leading-snug">{value}</span>
+  <div className="flex flex-col gap-1">
+    <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/80">{label}</span>
+    <span className={cn("text-[15px] font-medium leading-snug text-foreground", valueClassName)}>{value}</span>
   </div>
 );
-
-const Divider = () => <hr className="border-border/60" />;
-
-// Sidebar hero card — the deadline is the single most decision-relevant
-// fact on this page (the product's whole pitch is "never miss one"), so it
-// gets its own urgency-colored card instead of living inside the meta grid.
-const DeadlineCard = ({ deadline, days }: { deadline: string; days: number | null }) => {
-  if (days == null) return null;
-  const isOverdue = days < 0;
-  const isSoon = days >= 0 && days < 7;
-  return (
-    <div
-      className={cn(
-        "rounded-xl border p-4",
-        isOverdue
-          ? "border-destructive/30 bg-destructive/5"
-          : isSoon
-            ? "border-amber-300/60 bg-amber-50 dark:border-amber-900/40 dark:bg-amber-900/10"
-            : "border-border bg-card"
-      )}
-    >
-      <span className="flex items-center gap-1 text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
-        <Calendar className="h-3 w-3 shrink-0" />
-        Deadline
-      </span>
-      <div
-        className={cn(
-          "mt-1.5 text-2xl font-semibold tabular-nums leading-none",
-          isOverdue
-            ? "text-destructive"
-            : isSoon
-              ? "text-amber-700 dark:text-amber-400"
-              : "text-foreground"
-        )}
-      >
-        {isOverdue ? `${Math.abs(days)}d overdue` : `${days}d left`}
-      </div>
-      <div className="mt-1.5 text-[13px] text-muted-foreground">{formatDate(deadline)}</div>
-    </div>
-  );
-};
 
 const CountryChip = ({
   country,
@@ -329,59 +272,52 @@ export const TenderDetail = ({
   const descriptionParagraphs = displayedDescription ? splitIntoParagraphs(displayedDescription) : [];
   const isLongDescription = descriptionParagraphs.length > 2 || (displayedDescription?.length ?? 0) > 480;
 
-  /* Build only the fields that have values */
-  const metaFields: { icon?: any; label: string; value: React.ReactNode }[] = [
-    tender.procuring_entity && {
-      icon: Building2,
-      label: "Procuring entity",
-      value: tender.procuring_entity,
-    },
+  // Deadline urgency — same red/amber treatment the old standalone
+  // DeadlineCard used, now just the value of a meta field instead of its
+  // own boxed callout.
+  const deadlineValueClass =
+    dDays == null ? undefined : dDays < 0 ? "text-destructive" : dDays < 7 ? "text-amber-700 dark:text-amber-400" : undefined;
+  const deadlineValue = tender.deadline ? (
+    <>
+      {formatDate(tender.deadline)}
+      {dDays != null && (
+        <span className="ml-1.5 text-[12px] font-normal text-muted-foreground">
+          ({dDays < 0 ? `${Math.abs(dDays)}d overdue` : `${dDays}d left`})
+        </span>
+      )}
+    </>
+  ) : null;
+
+  /* Build only the fields that have values — most decision-relevant first
+     (deadline, process, who/where), administrative record-keeping last. */
+  const metaFields: { label: string; value: React.ReactNode; valueClassName?: string }[] = [
+    tender.deadline && { label: "Deadline", value: deadlineValue, valueClassName: deadlineValueClass },
+    tender.procurement_type && { label: "Procurement type", value: tender.procurement_type },
+    tender.procuring_entity && { label: "Procuring entity", value: tender.procuring_entity },
     tender.country && {
-      icon: Globe,
       label: "Country",
       value: <CountryChip country={tender.country} countryIso2={tender.country_iso2} />,
     },
-    tender.category && { icon: Tag, label: "Category", value: tender.category },
-    tender.procurement_type && {
-      label: "Procurement type",
-      value: tender.procurement_type,
-    },
-    tender.publication_date && {
-      label: "Published",
-      value: formatDate(tender.publication_date),
-    },
-    tender.estimated_value_usd && {
-      icon: DollarSign,
-      label: "Estimated value",
-      value: formatCurrency(tender.estimated_value_usd),
-    },
-    tender.original_currency && {
-      label: "Currency",
-      value: tender.original_currency,
-    },
+    tender.category && { label: "Category", value: tender.category },
+    tender.publication_date && { label: "Published", value: formatDate(tender.publication_date) },
+    tender.reference_number && { label: "Reference number", value: tender.reference_number },
+    tender.estimated_value_usd && { label: "Estimated value", value: formatCurrency(tender.estimated_value_usd) },
+    tender.original_currency && { label: "Currency", value: tender.original_currency },
     tender.participation_fee && {
       label: "Participation fee",
       value: `${tender.participation_fee} ${tender.original_currency}`,
     },
     (tender.location_region || tender.location_district) && {
-      icon: MapPin,
       label: "Location",
-      value: [tender.location_region, tender.location_district]
-        .filter(Boolean)
-        .join(", "),
+      value: [tender.location_region, tender.location_district].filter(Boolean).join(", "),
     },
-    tender.contact_information && {
-      icon: User,
-      label: "Contact information",
-      value: tender.contact_information,
-    },
-    tender.lot_count && { icon: Layers, label: "Lots", value: tender.lot_count },
+    tender.contact_information && { label: "Contact information", value: tender.contact_information },
+    tender.lot_count && { label: "Lots", value: tender.lot_count },
     tender.contract_duration_days && {
-      icon: Clock,
       label: "Contract duration",
       value: `${tender.contract_duration_days} days`,
     },
-  ].filter(Boolean) as { icon?: any; label: string; value: React.ReactNode }[];
+  ].filter(Boolean) as { label: string; value: React.ReactNode; valueClassName?: string }[];
 
   // Free plan sees full detail only once a tender is within the closing
   // window — see src/lib/plan.ts / the settled pricing model. Contact info
@@ -392,80 +328,50 @@ export const TenderDetail = ({
     : metaFields;
 
   return (
-    <div className="space-y-6 pb-2">
-      {/* ── Header ───────────────────────────────────────────────── */}
-      <div className="space-y-3">
-        {/* top row: identity (status/ref/source/language badges) on the
-            left, actions (view source, save) on the right — grouped by
-            purpose instead of scattered across three separate rows. */}
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <Select value={status} onValueChange={updateStatus} disabled={updating}>
-              <SelectTrigger
-                id="workflow-status"
-                className={cn(
-                  "h-7 w-auto gap-1 rounded-full border px-2.5 text-[11px] font-medium",
-                  STATUS_COLORS[status] ?? "bg-muted text-muted-foreground border-border"
-                )}
-              >
-                <SelectValue placeholder="Set status" />
-              </SelectTrigger>
-              <SelectContent>
-                {WORKFLOW_STATUSES.map((s) => (
-                  <SelectItem key={s} value={s} className="text-sm">
-                    {s}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {tender.reference_number && (
-              <code className="rounded bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">
-                {tender.reference_number}
-              </code>
-            )}
-            {tender.source && (
-              <span className="text-[12px] text-muted-foreground">{tender.source}</span>
-            )}
-            <SourceLanguageBadge sourceLanguage={tender.source_language} />
-            <TranslationStatusBadge status={tender.translation_status} />
-          </div>
+    <div className="space-y-8 pb-2">
+      {/* ── Utility row — internal tools (workflow status, save), kept quiet
+          and out of the way of the title/reading content below ── */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        
 
-          <div className="flex shrink-0 items-center gap-2">
-            {/* Gated the same as the summary/description below — otherwise a
-                free user could skip the paywall entirely via the original
-                posting. */}
-            {!gated && tender.source_url && tender.source !== "tanzania" && (
-              <a
-                href={tender.source_url}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center text-sm text-blue-600 hover:text-blue-800 hover:underline"
-              >
-                <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
-                View source
-              </a>
-            )}
-            <Button
-              type="button"
-              variant={isBookmarked ? "secondary" : "outline"}
-              size="sm"
-              className="h-8"
-              onClick={toggleBookmark}
-              disabled={bookmarkBusy}
-              aria-pressed={isBookmarked}
+        <div className="flex shrink-0 items-center gap-2">
+          {/* Gated the same as the summary/description below — otherwise a
+              free user could skip the paywall entirely via the original
+              posting. */}
+          {!gated && tender.source_url && tender.source !== "tanzania" && (
+            <a
+              href={tender.source_url}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center text-sm text-blue-600 hover:text-blue-800 hover:underline"
             >
-              {isBookmarked ? (
-                <BookmarkCheck className="mr-1.5 h-3.5 w-3.5" />
-              ) : (
-                <Bookmark className="mr-1.5 h-3.5 w-3.5" />
-              )}
-              {isBookmarked ? "Saved" : "Save"}
-            </Button>
-          </div>
+              <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
+              View source
+            </a>
+          )}
+          <Button
+            type="button"
+            variant={isBookmarked ? "secondary" : "outline"}
+            size="sm"
+            className="h-8"
+            onClick={toggleBookmark}
+            disabled={bookmarkBusy}
+            aria-pressed={isBookmarked}
+          >
+            {isBookmarked ? (
+              <BookmarkCheck className="mr-1.5 h-3.5 w-3.5" />
+            ) : (
+              <Bookmark className="mr-1.5 h-3.5 w-3.5" />
+            )}
+            {isBookmarked ? "Saved" : "Save"}
+          </Button>
         </div>
+      </div>
 
-        {/* title */}
-        <h2 className="text-2xl font-semibold leading-snug tracking-tight text-foreground">
+      {/* ── Title + language controls — the headline, sized like something
+          you're about to read rather than a UI label ── */}
+      <div className="space-y-3">
+        <h2 className="text-3xl font-bold leading-[1.15] tracking-tight text-foreground sm:text-[2.125rem]">
           {displayedTitle}
         </h2>
 
@@ -484,8 +390,8 @@ export const TenderDetail = ({
               </Tabs>
             )}
 
-            {/* Drives the AI summary and Description together — this is the
-                one control for "what language is this tender shown in". */}
+            {/* Drives the AI summary and title together — this is the one
+                control for "what language is this tender shown in". */}
             {tender.summary_en && (
               <Select value={summaryLang} onValueChange={setSummaryLang}>
                 <SelectTrigger className="h-8 w-[9.5rem] text-xs">
@@ -515,116 +421,103 @@ export const TenderDetail = ({
         )}
       </div>
 
-      <Divider />
-
-      {/* ── Meta grid ────────────────────────────────────────────── */}
+      {/* ── Meta — plain label/value pairs framed by two rules, like a
+          procurement notice's front-matter, not a grid of stat tiles ── */}
       {visibleMetaFields.length > 0 && (
-        <div className="grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-3 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-x-8 gap-y-6 border-y border-border/60 py-6 sm:grid-cols-3">
           {visibleMetaFields.map((f, i) => (
-            <Field key={i} icon={f.icon} label={f.label} value={f.value} />
+            <MetaItem key={i} label={f.label} value={f.value} valueClassName={f.valueClassName} />
           ))}
         </div>
       )}
 
+      {/* ── Body — summary flows straight into description as one
+          continuous read instead of stacked, separately-bordered cards ── */}
       {gated ? (
-        <>
-          <Divider />
-          <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border bg-muted/20 px-6 py-10 text-center">
-            <Lock className="h-6 w-6 text-muted-foreground" />
-            <div>
-              <p className="text-sm font-medium text-foreground">
-                Full details unlock closer to the deadline
-              </p>
-              <p className="mt-1 max-w-sm text-[13px] text-muted-foreground">
-                This tender closes in more than {FREE_VISIBILITY_DAYS} days. Free accounts see full
-                detail once it's within that window — Pro sees every tender the moment it's published.
-              </p>
-            </div>
-            <Button size="sm" onClick={() => navigate("/pricing")}>
-              Upgrade to Pro
-            </Button>
+        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border bg-muted/20 px-6 py-10 text-center">
+          <Lock className="h-6 w-6 text-muted-foreground" />
+          <div>
+            <p className="text-sm font-medium text-foreground">
+              Full details unlock closer to the deadline
+            </p>
+            <p className="mt-1 max-w-sm text-[13px] text-muted-foreground">
+              This tender closes in more than {FREE_VISIBILITY_DAYS} days. Free accounts see full
+              detail once it's within that window — Pro sees every tender the moment it's published.
+            </p>
           </div>
-        </>
+          <Button size="sm" onClick={() => navigate("/pricing")}>
+            Upgrade to Pro
+          </Button>
+        </div>
       ) : (
-        <>
-          {/* ── AI Summary ───────────────────────────────────────────── */}
+        <div className="space-y-7">
+          {/* ── Summary ── */}
           {tender.summary_en && (
-            <>
-              <Divider />
-              <div className="space-y-3">
-                <div className="flex items-center justify-between gap-3">
-                  <h3 className="text-xs font-semibold tracking-wide text-foreground">
-                    AI summary
-                  </h3>
+            <div className="space-y-2.5">
+              <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/80">
+                Summary
+              </h3>
+              {summaryLoading ? (
+                <div className="space-y-2.5">
+                  <div className="h-4 w-full animate-pulse rounded bg-muted/70" />
+                  <div className="h-4 w-[85%] animate-pulse rounded bg-muted/70" />
+                  <div className="h-4 w-[60%] animate-pulse rounded bg-muted/70" />
                 </div>
-
-                <div className="rounded-r-md border-l-4 border border-primary/15 bg-gradient-to-br from-primary/[0.06] via-background to-muted/30 px-4 py-3.5 shadow-sm">
-                  {summaryLoading ? (
-                    <div className="space-y-2">
-                      <div className="h-3.5 w-full animate-pulse rounded bg-muted/70" />
-                      <div className="h-3.5 w-[85%] animate-pulse rounded bg-muted/70" />
-                      <div className="h-3.5 w-[60%] animate-pulse rounded bg-muted/70" />
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {summaryError && (
-                        <p className="text-[11.5px] font-medium text-amber-600 dark:text-amber-400">
-                          {summaryError}
-                        </p>
-                      )}
-                      <p className="text-sm leading-relaxed text-foreground/90 whitespace-pre-wrap">
-                        {displayedSummary}
-                      </p>
-                    </div>
+              ) : (
+                <>
+                  {summaryError && (
+                    <p className="text-[11.5px] font-medium text-amber-600 dark:text-amber-400">
+                      {summaryError}
+                    </p>
                   )}
-                </div>
-              </div>
-            </>
+                  <p className="text-[17px] leading-relaxed text-foreground/90 whitespace-pre-wrap">
+                    {displayedSummary}
+                  </p>
+                </>
+              )}
+            </div>
           )}
 
-          {/* ── Description ──────────────────────────────────────────── */}
+          {/* ── Description ── */}
           {displayedDescription && (
-            <>
-              <Divider />
-              <div className="space-y-3">
-                <h3 className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
-                  Description
-                </h3>
+            <div className="space-y-2.5">
+              <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/80">
+                Description
+              </h3>
 
-                <div className="relative">
-                  <div
-                    className={cn(
-                      "space-y-3",
-                      !descExpanded && isLongDescription && "max-h-40 overflow-hidden"
-                    )}
-                  >
-                    {descriptionParagraphs.map((paragraph, i) => (
-                      <p
-                        key={i}
-                        className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground"
-                      >
-                        {paragraph}
-                      </p>
-                    ))}
-                  </div>
-                  {!descExpanded && isLongDescription && (
-                    <div className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-background to-transparent" />
+              <div className="relative">
+                <div
+                  className={cn(
+                    "space-y-3",
+                    !descExpanded && isLongDescription && "max-h-40 overflow-hidden"
                   )}
+                >
+                  {descriptionParagraphs.map((paragraph, i) => (
+                    <p
+                      key={i}
+                      className="whitespace-pre-wrap text-[15px] leading-relaxed text-foreground/80"
+                    >
+                      {paragraph}
+                    </p>
+                  ))}
                 </div>
-
-                {isLongDescription && (
-                  <button
-                    type="button"
-                    onClick={() => setDescExpanded((e) => !e)}
-                    className="text-sm font-medium text-primary hover:underline"
-                  >
-                    {descExpanded ? "Show less" : "Show more"}
-                  </button>
+                {!descExpanded && isLongDescription && (
+                  <div className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-background to-transparent" />
                 )}
               </div>
-            </>
+
+              {isLongDescription && (
+                <button
+                  type="button"
+                  onClick={() => setDescExpanded((e) => !e)}
+                  className="text-sm font-medium text-primary hover:underline"
+                >
+                  {descExpanded ? "Show less" : "Show more"}
+                </button>
+              )}
+            </div>
           )}
-        </>
+        </div>
       )}
 
       {/* ── Footer meta ──────────────────────────────────────────── */}

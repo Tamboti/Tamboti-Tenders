@@ -458,7 +458,17 @@ export default function PostsAdmin() {
       </Card>
 
       <Dialog open={editorPostId !== undefined} onOpenChange={(open) => !open && setEditorPostId(undefined)}>
-        <DialogContent className="p-0 gap-0 overflow-hidden flex flex-col max-w-full sm:max-w-4xl lg:max-w-5xl max-h-[90vh]">
+        <DialogContent
+          className={cn(
+            "p-0 gap-0 overflow-hidden flex flex-col",
+            // Full-screen on mobile — edge to edge, no floating rounded card
+            // that has to also solve internal scrolling on a tiny viewport.
+            "!inset-0 !left-0 !top-0 !h-full !max-h-full !w-full !max-w-full !translate-x-0 !translate-y-0 !rounded-none",
+            // Back to a normal centered, rounded modal from sm+.
+            "sm:!inset-auto sm:!left-[50%] sm:!top-[50%] sm:!h-auto sm:!max-h-[85vh] sm:!w-full sm:!max-w-4xl sm:!-translate-x-1/2 sm:!-translate-y-1/2 sm:!rounded-2xl",
+            "lg:!max-w-5xl"
+          )}
+        >
           {editorPostId !== undefined && (
             <PostEditor
               postId={editorPostId}
