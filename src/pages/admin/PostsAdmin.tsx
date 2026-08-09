@@ -506,9 +506,9 @@ export default function PostsAdmin() {
       </AlertDialog>
 
       <Dialog open={!!schedulingTarget} onOpenChange={(open) => !open && setSchedulingTarget(null)}>
-        <DialogContent className="w-[92vw] max-w-[92vw] max-h-[85vh] overflow-y-auto rounded-2xl sm:w-full sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="truncate pr-6">Schedule "{schedulingTarget?.title}"</DialogTitle>
+        <DialogContent className="w-[92vw] max-w-[92vw] max-h-[85vh] min-w-0 overflow-y-auto rounded-2xl sm:w-full sm:max-w-sm">
+          <DialogHeader className="min-w-0">
+            <DialogTitle className="min-w-0 truncate pr-6">Schedule "{schedulingTarget?.title}"</DialogTitle>
           </DialogHeader>
           <DateTimePicker value={scheduleDraft} onChange={setScheduleDraft} placeholder="Publish immediately" />
           <p className="text-xs text-muted-foreground">
