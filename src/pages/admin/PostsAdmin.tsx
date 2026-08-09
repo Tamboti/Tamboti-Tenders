@@ -506,9 +506,9 @@ export default function PostsAdmin() {
       </AlertDialog>
 
       <Dialog open={!!schedulingTarget} onOpenChange={(open) => !open && setSchedulingTarget(null)}>
-        <DialogContent className="sm:max-w-sm">
+        <DialogContent className="w-[92vw] max-w-[92vw] max-h-[85vh] overflow-y-auto rounded-2xl sm:w-full sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle className="truncate">Schedule "{schedulingTarget?.title}"</DialogTitle>
+            <DialogTitle className="truncate pr-6">Schedule "{schedulingTarget?.title}"</DialogTitle>
           </DialogHeader>
           <DateTimePicker value={scheduleDraft} onChange={setScheduleDraft} placeholder="Publish immediately" />
           <p className="text-xs text-muted-foreground">
@@ -516,11 +516,11 @@ export default function PostsAdmin() {
               ? `Publishes automatically ${formatDateTime(scheduleDraft)}.`
               : "No date picked — saving now will send this back to a draft."}
           </p>
-          <DialogFooter>
-            <Button variant="outline" size="sm" disabled={scheduling} onClick={() => setSchedulingTarget(null)}>
+          <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:gap-0">
+            <Button variant="outline" size="sm" className="w-full sm:w-auto" disabled={scheduling} onClick={() => setSchedulingTarget(null)}>
               Cancel
             </Button>
-            <Button size="sm" disabled={scheduling} onClick={() => void confirmSchedule()}>
+            <Button size="sm" className="w-full sm:w-auto" disabled={scheduling} onClick={() => void confirmSchedule()}>
               {scheduling ? "Saving…" : scheduleDraft ? "Schedule" : "Save as draft"}
             </Button>
           </DialogFooter>
