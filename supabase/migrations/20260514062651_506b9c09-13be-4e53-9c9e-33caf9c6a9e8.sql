@@ -51,9 +51,9 @@ BEGIN
     '*/15 * * * *',
     format($cmd$
       select net.http_post(
-        url     := 'https://luykyredvhhcamcmgahp.supabase.co/functions/v1/send-alert-digest',
+        url     := 'https://gdbodrzxdbtskyzmqmuu.supabase.co/functions/v1/send-alert-digest',
         headers := jsonb_build_object(
-          'Authorization', 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx1eWt5cmVkdmhoY2FtY21nYWhwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1MDM0NTksImV4cCI6MjA5MzA3OTQ1OX0.Kzo3KivcVpf10RzpX1omIUOdhMf1QKdxKCWRB5QcTsA',
+          'Authorization', 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkYm9kcnp4ZGJ0c2t5em1xbXV1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMxMjY2NjksImV4cCI6MjA5ODcwMjY2OX0.pCHxLvAxtDHotmltmtzNpDp-wTMzSQGwRpdJHqOlOsw',
           'Content-Type', 'application/json',
           'x-alerts-cron-secret', %L
         ),

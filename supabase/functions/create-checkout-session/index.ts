@@ -12,6 +12,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import Stripe from "https://esm.sh/stripe@17.4.0?target=deno";
+import { safeReturnPath } from "../_shared/safeReturnPath.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -47,11 +48,13 @@ Deno.serve(async (req: Request): Promise<Response> => {
   }
 
   let interval: "monthly" | "annual" = "monthly";
+  let returnPath = "/pricing";
   try {
     const body = await req.json().catch(() => ({}));
     if (body?.interval === "annual") interval = "annual";
+    returnPath = safeReturnPath(body?.returnPath);
   } catch {
-    // no/invalid body — default to monthly
+    // no/invalid body — default to monthly + /pricing
   }
   const priceId = interval === "annual" ? STRIPE_PRICE_ID_PRO_ANNUAL : STRIPE_PRICE_ID_PRO_MONTHLY;
 
@@ -102,8 +105,10 @@ Deno.serve(async (req: Request): Promise<Response> => {
       metadata: { user_id: user.id },
       line_items: [{ price: priceId, quantity: 1 }],
       allow_promotion_codes: true,
-      success_url: `${APP_URL}/pricing?checkout=success`,
-      cancel_url: `${APP_URL}/pricing?checkout=cancel`,
+      // Redirects back to wherever the user actually started checkout from
+      // (Pricing or the portal Billing page) instead of always /pricing.
+      success_url: `${APP_URL}${returnPath}?checkout=success`,
+      cancel_url: `${APP_URL}${returnPath}?checkout=cancel`,
     });
 
     if (!session.url) throw new Error("Stripe did not return a checkout URL");

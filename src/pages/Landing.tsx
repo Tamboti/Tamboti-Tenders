@@ -28,9 +28,10 @@ import { Search, Bell, Bookmark, Globe } from "@/components/icons";
 import { Seo } from "@/components/seo/Seo";
 import { useAuth } from "@/contexts/AuthContext";
 import { fadeUp, staggerContainer } from "@/lib/motion";
+import { PRO_PRICE_USD } from "@/lib/plan";
 
 // Set this once a real hero image is ready — the placeholder renders until then.
-const HERO_IMAGE_URL: string | null = "https://luykyredvhhcamcmgahp.supabase.co/storage/v1/object/public/Company%20assets/ChatGPT_Image_Jul_22__2026__06_34_52_PM-removebg-preview.png";
+const HERO_IMAGE_URL: string | null = "https://gdbodrzxdbtskyzmqmuu.supabase.co/storage/v1/object/public/Company%20assets/ChatGPT_Image_Jul_22__2026__06_34_52_PM-removebg-preview.png";
 
 const getTodayIsoDate = () => {
   const now = new Date();
@@ -84,7 +85,7 @@ const FAQ_ITEMS = [
   {
     question: "What's free and what's paid?",
     answer:
-      "Browsing and searching every tender is free, no account required, and a free account gets you full detail on tenders closing within 30 days plus a handful of bookmarks and one alert. Pro ($19/month) removes those limits and gives you early visibility — you see tenders as soon as they're published instead of waiting until the deadline gets close. See the Pricing page for the full comparison.",
+      `Browsing and searching every tender is free, no account required, and a free account gets you full detail on tenders closing within 30 days plus a handful of bookmarks and one alert. Pro ($${PRO_PRICE_USD}/month) removes those limits and gives you early visibility — you see tenders as soon as they're published instead of waiting until the deadline gets close. See the Pricing page for the full comparison.`,
   },
   {
     question: "Which countries are covered?",
@@ -217,7 +218,7 @@ export const Landing = () => {
             >
               {HERO_IMAGE_URL ? (
                 <img
-                  src="https://luykyredvhhcamcmgahp.supabase.co/storage/v1/object/public/Company%20assets/ChatGPT%20Image%20Aug%207,%202026,%2007_31_29%20PM%20(3).png"
+                  src="https://gdbodrzxdbtskyzmqmuu.supabase.co/storage/v1/object/public/Company%20assets/ChatGPT%20Image%20Aug%207,%202026,%2007_31_29%20PM%20(3).png"
                   alt=""
                   className="mx-auto aspect-square w-full object-contain"
                 />

@@ -12,7 +12,7 @@ import { SourceLanguageBadge, TranslationStatusBadge } from "./LanguageBadges";
 import { getLanguageName, isNonEnglishSource, OUTPUT_LANGUAGES } from "@/lib/tenderLanguage";
 import { resolveCountryDisplay } from "@/lib/countries";
 import { useCountryReference } from "@/hooks/use-country-reference";
-import { ExternalLink, Globe, Bookmark, BookmarkCheck, Lock } from "@/components/icons";
+import { ExternalLink, Globe, Bookmark, BookmarkCheck, Lock, Sparkles } from "@/components/icons";
 import { supabase } from "@/integrations/supabase/client";
 import { handleDbError } from "@/lib/dbError";
 import { useAuth } from "@/contexts/AuthContext";
@@ -44,6 +44,21 @@ const MetaItem = ({
     <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/80">{label}</span>
     <span className={cn("text-[15px] font-medium leading-snug text-foreground", valueClassName)}>{value}</span>
   </div>
+);
+
+// Plain grey skeleton bars read as "this is broken/slow", not "AI is
+// working on it" — a sparkles icon + bouncing dots (the classic typing-
+// indicator pattern) makes it obviously an active AI task, not a stall.
+const AIWorkingBadge = ({ label }: { label: string }) => (
+  <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-medium text-primary">
+    <Sparkles className="h-3 w-3 animate-pulse" />
+    {label}
+    <span className="flex items-center gap-0.5">
+      <span className="h-1 w-1 animate-bounce rounded-full bg-primary [animation-delay:-0.3s]" />
+      <span className="h-1 w-1 animate-bounce rounded-full bg-primary [animation-delay:-0.15s]" />
+      <span className="h-1 w-1 animate-bounce rounded-full bg-primary" />
+    </span>
+  </span>
 );
 
 const CountryChip = ({
@@ -371,9 +386,15 @@ export const TenderDetail = ({
       {/* ── Title + language controls — the headline, sized like something
           you're about to read rather than a UI label ── */}
       <div className="space-y-3">
-        <h2 className="text-3xl font-bold leading-[1.15] tracking-tight text-foreground sm:text-[2.125rem]">
+        <h2
+          className={cn(
+            "text-3xl font-bold leading-[1.15] tracking-tight text-foreground sm:text-[2.125rem] transition-opacity",
+            summaryLoading && "opacity-50"
+          )}
+        >
           {displayedTitle}
         </h2>
+        {summaryLoading && <AIWorkingBadge label="Translating title" />}
 
         {(showTitleToggle || tender.summary_en) && (
           <div className="flex flex-wrap items-center gap-2">
@@ -458,10 +479,13 @@ export const TenderDetail = ({
                 Summary
               </h3>
               {summaryLoading ? (
-                <div className="space-y-2.5">
-                  <div className="h-4 w-full animate-pulse rounded bg-muted/70" />
-                  <div className="h-4 w-[85%] animate-pulse rounded bg-muted/70" />
-                  <div className="h-4 w-[60%] animate-pulse rounded bg-muted/70" />
+                <div className="space-y-3">
+                  <AIWorkingBadge label="Translating summary" />
+                  <div className="space-y-2.5">
+                    <div className="h-4 w-full animate-pulse rounded bg-primary/10" />
+                    <div className="h-4 w-[85%] animate-pulse rounded bg-primary/10" />
+                    <div className="h-4 w-[60%] animate-pulse rounded bg-primary/10" />
+                  </div>
                 </div>
               ) : (
                 <>

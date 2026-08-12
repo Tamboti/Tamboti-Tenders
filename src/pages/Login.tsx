@@ -24,6 +24,7 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [sendingReset, setSendingReset] = useState(false);
 
   if (!loading && session) {
     if (explicitFrom) return <Navigate to={explicitFrom} replace />;
@@ -79,6 +80,24 @@ const Login = () => {
       return;
     }
     trackEvent("login");
+  };
+
+  const onForgotPassword = async () => {
+    const normalized = email.trim().toLowerCase();
+    if (!normalized) {
+      toast.error("Enter your email above first");
+      return;
+    }
+    setSendingReset(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(normalized, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    setSendingReset(false);
+    if (error) {
+      toast.error(error.message || "Could not send reset email");
+      return;
+    }
+    toast.success("Check your email for a password reset link.");
   };
 
   const isReady =
@@ -166,9 +185,21 @@ const Login = () => {
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="password" className="text-[13px] font-medium text-muted-foreground">
-              Password
-            </label>
+            <div className="flex items-center justify-between">
+              <label htmlFor="password" className="text-[13px] font-medium text-muted-foreground">
+                Password
+              </label>
+              {mode === "signin" && (
+                <button
+                  type="button"
+                  onClick={onForgotPassword}
+                  disabled={sendingReset}
+                  className="text-[13px] font-medium text-primary hover:underline disabled:opacity-50"
+                >
+                  {sendingReset ? "Sending…" : "Forgot password?"}
+                </button>
+              )}
+            </div>
             <input
               id="password"
               type="password"

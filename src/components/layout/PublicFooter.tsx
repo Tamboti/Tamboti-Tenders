@@ -7,7 +7,7 @@ export const PublicFooter = () => (
       <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1.5">
         <NavLink to="/" className="shrink-0 flex items-center ">
-          <img src="https://luykyredvhhcamcmgahp.supabase.co/storage/v1/object/public/Company%20assets/d7d592e6-4c11-47a1-888d-f2c924958a69-removebg-preview.png" alt={SITE_NAME} className=" w-14 object-contain" />
+          <img src="https://gdbodrzxdbtskyzmqmuu.supabase.co/storage/v1/object/public/Company%20assets/d7d592e6-4c11-47a1-888d-f2c924958a69-removebg-preview.png" alt={SITE_NAME} className=" w-14 object-contain" />
           <span className="text-2xl font-semibold tracking-tighter text-primary">Tamboti Tenders</span>
         </NavLink>
           <p className="max-w-xs text-sm text-muted-foreground">

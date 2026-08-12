@@ -1,7 +1,6 @@
-// Billing groundwork only — receives Stripe webhook events and upserts
-// billing_customers/subscriptions via the service-role client. Inert until
-// a Stripe account + checkout flow exists to trigger it; no UI points at
-// this yet, and nothing in the running app is gated by subscription status.
+// Receives Stripe webhook events and upserts billing_customers/subscriptions
+// via the service-role client. Live: create-checkout-session and the
+// Billing/Pricing pages both depend on this being correct.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import Stripe from "https://esm.sh/stripe@17.4.0?target=deno";
@@ -28,6 +27,22 @@ const mapStripeStatus = (status: Stripe.Subscription.Status): string => {
   }
   // incomplete, incomplete_expired, unpaid, paused — collapse to inactive.
   return "inactive";
+};
+
+// Stripe moved current_period_end/start off the top-level Subscription
+// object onto each subscription item in a later API version than the one
+// this client is pinned to (2024-11-20.acacia) — but webhook payloads are
+// sent in whatever API version the Stripe account/endpoint is configured
+// for, independent of what our outgoing client requests. Reading only
+// sub.current_period_end silently produced `undefined`, and
+// `new Date(undefined * 1000).toISOString()` throws RangeError: Invalid
+// time value, which is why every subscription.created/updated event was
+// 500ing. Check both locations so this works regardless of account version.
+const getCurrentPeriodEnd = (sub: Stripe.Subscription): string | null => {
+  const itemLevel = (sub.items.data[0] as unknown as { current_period_end?: number })?.current_period_end;
+  const topLevel = (sub as unknown as { current_period_end?: number }).current_period_end;
+  const epochSeconds = itemLevel ?? topLevel;
+  return typeof epochSeconds === "number" ? new Date(epochSeconds * 1000).toISOString() : null;
 };
 
 Deno.serve(async (req: Request): Promise<Response> => {
@@ -92,7 +107,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
               stripe_subscription_id: sub.id,
               stripe_price_id: sub.items.data[0]?.price?.id ?? null,
               status: mapStripeStatus(sub.status),
-              current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
+              current_period_end: getCurrentPeriodEnd(sub),
             },
             { onConflict: "stripe_subscription_id" },
           );

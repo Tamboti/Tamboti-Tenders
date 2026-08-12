@@ -1,15 +1,15 @@
-// Opens a Stripe Billing Portal session so a Pro user can update payment
-// details or cancel — the "manage subscription" counterpart to
-// create-checkout-session.
+// Returns the signed-in user's Stripe payment history. There's no local
+// invoices table — Stripe is the source of truth for what was actually
+// charged, so this reads straight from the Stripe API rather than trying to
+// keep a local copy in sync via more webhook events.
 //
 // POST body: {} (none needed)
-// Response:  { url: string }
+// Response:  { payments: Array<{ id, amountUsd, status, createdAt, hostedInvoiceUrl, invoicePdf, number }> }
 //
-// Auth: any signed-in user who has a billing_customers row.
+// Auth: any signed-in user (JWT in Authorization header).
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import Stripe from "https://esm.sh/stripe@17.4.0?target=deno";
-import { safeReturnPath } from "../_shared/safeReturnPath.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -19,18 +19,12 @@ const corsHeaders = {
 };
 
 const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY") ?? "";
-const APP_URL = Deno.env.get("APP_URL") ?? "http://localhost:8080";
 
 const json = (status: number, body: Record<string, unknown>) =>
   new Response(JSON.stringify(body), {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
-
-const log = {
-  warn: (msg: string, meta?: Record<string, unknown>) =>
-    console.warn(JSON.stringify({ level: "warn", msg, ...meta })),
-};
 
 Deno.serve(async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -50,9 +44,6 @@ Deno.serve(async (req: Request): Promise<Response> => {
   if (userErr || !userData?.user) return json(401, { error: "Unauthorized" });
   const user = userData.user;
 
-  const body = await req.json().catch(() => ({}));
-  const returnPath = safeReturnPath(body?.returnPath);
-
   const service = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
@@ -65,20 +56,33 @@ Deno.serve(async (req: Request): Promise<Response> => {
     .maybeSingle();
 
   if (!customer?.stripe_customer_id) {
-    return json(400, { error: "No billing account found for this user yet" });
+    return json(200, { payments: [] });
   }
 
   const stripe = new Stripe(STRIPE_SECRET_KEY, { apiVersion: "2024-11-20.acacia" });
 
   try {
-    const session = await stripe.billingPortal.sessions.create({
+    const invoices = await stripe.invoices.list({
       customer: customer.stripe_customer_id,
-      return_url: `${APP_URL}${returnPath}`,
+      limit: 12,
+      status: "paid",
     });
-    return json(200, { url: session.url });
+
+    const payments = invoices.data.map((inv) => ({
+      id: inv.id,
+      amountUsd: inv.amount_paid / 100,
+      currency: inv.currency,
+      status: inv.status,
+      createdAt: new Date(inv.created * 1000).toISOString(),
+      hostedInvoiceUrl: inv.hosted_invoice_url ?? null,
+      invoicePdf: inv.invoice_pdf ?? null,
+      number: inv.number ?? null,
+    }));
+
+    return json(200, { payments });
   } catch (err) {
     const msg = (err as Error).message;
-    log.warn("customer-portal failed", { user_id: user.id, error: msg });
+    console.warn(JSON.stringify({ level: "warn", msg: "billing-history failed", user_id: user.id, error: msg }));
     return json(500, { error: msg });
   }
 });

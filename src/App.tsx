@@ -21,6 +21,7 @@ import Sources from "./pages/Sources";
 import Bookmarks from "./pages/Bookmarks";
 import Billing from "./pages/Billing";
 import Login from "./pages/Login";
+import ResetPassword from "./pages/ResetPassword";
 import PostsAdmin from "./pages/admin/PostsAdmin";
 import Analytics from "./pages/admin/Analytics";
 import NotFound from "./pages/NotFound.tsx";
@@ -42,6 +43,7 @@ const App = () => (
               <RouteTracker />
               <Routes>
                 <Route path="/login" element={<Login />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
                 <Route element={<PublicLayout />}>
                   <Route path="/" element={<Landing />} />
                   <Route path="/pricing" element={<Pricing />} />

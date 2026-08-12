@@ -1,9 +1,8 @@
-import { useEffect, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
-import { useSubscription, useBillingActions } from "@/hooks/use-subscription";
+import { useSubscription, useBillingActions, useCheckoutRedirectResult } from "@/hooks/use-subscription";
 import { Button } from "@/components/ui/button";
 import { Check } from "@/components/icons";
 import { Seo } from "@/components/seo/Seo";
@@ -37,43 +36,17 @@ const PRO_FEATURES = [
 export const Pricing = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { isPro, isLoading: subLoading, invalidate } = useSubscription();
+  const { isPro, isLoading: subLoading } = useSubscription();
   const { startCheckout, openPortal, checkoutBusy, portalBusy } = useBillingActions();
-  const [searchParams, setSearchParams] = useSearchParams();
+  useCheckoutRedirectResult();
   const [billingInterval, setBillingInterval] = useState<BillingInterval>("monthly");
-
-  // Stripe redirects here after checkout — the webhook that flips
-  // `subscriptions.status` can lag the redirect by a second or two, so give
-  // it a couple of retries rather than showing "still on Free" right away.
-  useEffect(() => {
-    const checkout = searchParams.get("checkout");
-    if (!checkout) return;
-    if (checkout === "success") {
-      toast.success("Payment received — activating your Pro plan…");
-      let attempts = 0;
-      const poll = window.setInterval(() => {
-        attempts += 1;
-        invalidate();
-        if (attempts >= 5) window.clearInterval(poll);
-      }, 1500);
-      return () => window.clearInterval(poll);
-    }
-    if (checkout === "cancel") {
-      toast.info("Checkout cancelled — you're still on the Free plan.");
-    }
-    setSearchParams((p) => {
-      p.delete("checkout");
-      return p;
-    }, { replace: true });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const upgrade = () => {
     if (!user) {
       navigate("/login?mode=signup");
       return;
     }
-    void startCheckout(billingInterval);
+    void startCheckout(billingInterval, "/pricing");
   };
 
   const proMonthlyDisplay =
@@ -164,14 +137,20 @@ export const Pricing = () => {
                 </li>
               ))}
             </ul>
+            {/* Purely informational once signed in — there's nothing to
+                "do" on this card for either an existing Free or Pro user,
+                so it's disabled and just reflects their actual plan instead
+                of always claiming "You're on Free" (the previous bug: this
+                only ever checked whether *someone* was logged in, not which
+                plan they're actually on). */}
             <Button
               variant="outline"
               size="lg"
               className="mt-8"
-              disabled={!user}
+              disabled={!!user}
               onClick={() => navigate("/tenders")}
             >
-              {user ? "You're on Free" : "Browse tenders"}
+              {!user ? "Browse tenders" : isPro ? "Included in Pro" : "You're on Free"}
             </Button>
           </motion.div>
 
@@ -209,7 +188,7 @@ export const Pricing = () => {
                 size="lg"
                 className="mt-8 bg-white text-primary hover:bg-white/90"
                 disabled={portalBusy}
-                onClick={() => void openPortal()}
+                onClick={() => void openPortal("/pricing")}
               >
                 {portalBusy ? "Opening…" : "Manage subscription"}
               </Button>

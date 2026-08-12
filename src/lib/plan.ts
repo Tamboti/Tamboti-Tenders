@@ -4,7 +4,7 @@
 export const FREE_BOOKMARK_LIMIT = 5;
 export const FREE_ALERT_LIMIT = 1;
 export const FREE_VISIBILITY_DAYS = 30;
-export const PRO_PRICE_USD = 19;
+export const PRO_PRICE_USD = 99;
 
 export type BillingInterval = "monthly" | "annual";
 
