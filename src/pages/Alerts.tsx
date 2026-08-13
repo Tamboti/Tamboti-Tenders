@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
   DialogContent,
@@ -559,6 +560,33 @@ function AlertCard({
   );
 }
 
+// ─── Alert Card Skeleton ──────────────────────────────────────────────────────
+
+function AlertCardSkeleton() {
+  return (
+    <div className="flex w-full min-w-0 items-center gap-3 rounded-lg border border-border/70 bg-card px-4 py-3 shadow-sm">
+      <Skeleton className="h-8 w-8 shrink-0 rounded-lg" />
+
+      <div className="flex min-w-0 flex-1 flex-col gap-2">
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-3.5 w-28 rounded" />
+          <Skeleton className="h-4 w-12 rounded-full" />
+        </div>
+        <div className="flex items-center gap-3">
+          <Skeleton className="h-3 w-24 rounded" />
+          <Skeleton className="h-3 w-16 rounded" />
+          <Skeleton className="h-3 w-20 rounded" />
+        </div>
+      </div>
+
+      <div className="flex shrink-0 items-center gap-2">
+        <Skeleton className="h-7 w-7 rounded-md" />
+        <Skeleton className="h-5 w-9 rounded-full" />
+      </div>
+    </div>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 const Alerts = () => {
@@ -773,8 +801,10 @@ const Alerts = () => {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-10">
-          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <AlertCardSkeleton key={i} />
+          ))}
         </div>
       ) : alerts.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border bg-card px-6 py-10 text-center">
