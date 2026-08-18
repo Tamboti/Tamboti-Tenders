@@ -32,13 +32,26 @@ export const useSubscription = () => {
   const query = useQuery({
     queryKey: ["subscription", user?.id],
     queryFn: async (): Promise<SubscriptionRow | null> => {
+      // A user can end up with more than one row here over their billing
+      // lifetime — e.g. resubscribing after a cancellation, or switching
+      // monthly/annual via a fresh checkout instead of the customer portal
+      // creates a new stripe_subscription_id, and upsert's onConflict target
+      // is that id, not user_id. `.maybeSingle()` on >1 row throws (PostgREST
+      // 406), which silently fell through to "inactive"/Free even for a
+      // genuinely paid-up user — this is what was reported as "billing page
+      // shows Free even though I've paid". Fetch every row for the user and
+      // pick whichever actually reflects live access, instead of assuming
+      // there's exactly one.
       const { data, error } = await supabase
         .from("subscriptions")
         .select("status, current_period_end")
         .eq("user_id", user!.id)
-        .maybeSingle();
+        .order("updated_at", { ascending: false });
       if (error) throw error;
-      return data as SubscriptionRow | null;
+      if (!data || data.length === 0) return null;
+      const priority: SubscriptionStatus[] = ["active", "trialing", "past_due", "canceled", "inactive"];
+      const best = priority.map((s) => data.find((r) => r.status === s)).find((r) => r != null);
+      return (best ?? data[0]) as SubscriptionRow;
     },
     enabled: !!user?.id,
     staleTime: 60_000,

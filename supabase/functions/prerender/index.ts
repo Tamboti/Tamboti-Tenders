@@ -4,7 +4,7 @@
 // index.html and it fills in via JS. Crawlers that don't execute JS (most of
 // them: Bing, social-preview bots, AI answer engines) would otherwise only
 // ever see an empty <div id="root">. vercel.json rewrites requests from
-// known bot user agents on /blog/:slug and /tender/:id to this function
+// known bot user agents on /blog/:slug and /tender/:id(/:slug) to this function
 // instead, which renders the same title/description/content server-side as
 // plain HTML. Everyone else still gets the normal SPA at the same URL.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
@@ -26,6 +26,16 @@ const DEFAULT_IMAGE =
 // budget — the page still resolves (it's real history), it just asks bots
 // not to index it. Tune freely; this is a judgment call, not a hard rule.
 const STALE_TENDER_DAYS = 60;
+
+// Mirrors src/lib/slug.ts — kept in sync by hand since Deno functions can't
+// import from src/.
+const slugify = (s: string) =>
+  s
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
 
 const esc = (s: string) =>
   s
@@ -175,7 +185,7 @@ async function renderBlogPost(supabase: ReturnType<typeof createClient>, slug: s
 }
 
 async function renderTender(supabase: ReturnType<typeof createClient>, id: string) {
-  const canonical = `${APP_URL}/tender/${encodeURIComponent(id)}`;
+  const bareCanonical = `${APP_URL}/tender/${encodeURIComponent(id)}`;
   const { data: tender } = await supabase
     .from("tenders")
     .select(
@@ -185,9 +195,11 @@ async function renderTender(supabase: ReturnType<typeof createClient>, id: strin
     .eq("id", id)
     .maybeSingle();
 
-  if (!tender) return notFound(canonical);
+  if (!tender) return notFound(bareCanonical);
 
   const title = tender.title_en ?? tender.title;
+  const slug = slugify(title ?? "");
+  const canonical = slug ? `${bareCanonical}/${slug}` : bareCanonical;
   const bodyText = tender.description_en ?? tender.description ?? tender.summary_en ?? "";
   const description = (tender.summary_en ?? bodyText).slice(0, 300) || `Procurement tender: ${title}`;
 
@@ -260,7 +272,9 @@ Deno.serve(async (req: Request) => {
   const blogMatch = path.match(/^\/blog\/([^/]+)\/?$/);
   if (blogMatch) return renderBlogPost(supabase, decodeURIComponent(blogMatch[1]));
 
-  const tenderMatch = path.match(/^\/tender\/([^/]+)\/?$/);
+  // Second segment is an optional title slug, purely for readability — the
+  // id alone is what's looked up, so any (or no) slug value still resolves.
+  const tenderMatch = path.match(/^\/tender\/([^/]+)(?:\/[^/]+)?\/?$/);
   if (tenderMatch) return renderTender(supabase, decodeURIComponent(tenderMatch[1]));
 
   return new Response("Not found", { status: 404, headers: corsHeaders });

@@ -49,6 +49,7 @@ const App = () => (
                   <Route path="/pricing" element={<Pricing />} />
                   <Route path="/tenders" element={<Tenders />} />
                   <Route path="/tender/:id" element={<TenderDetailPage />} />
+                  <Route path="/tender/:id/:slug" element={<TenderDetailPage />} />
                   <Route path="/blog" element={<Blog />} />
                   <Route path="/blog/:slug" element={<BlogPost />} />
                   {/* Old unprefixed/public-shell URLs — redirect so

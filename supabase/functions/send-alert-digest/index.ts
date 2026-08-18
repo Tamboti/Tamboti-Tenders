@@ -111,6 +111,21 @@ const badgeStyle = (stage: number) => {
   return "color:#0056D2;";
 };
 
+// Mirrors src/lib/slug.ts — kept in sync by hand since Deno functions can't
+// import from src/.
+const slugify = (s: string) =>
+  s
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
+
+const tenderHref = (base: string, t: { id: string; title: string }) => {
+  const slug = slugify(t.title ?? "");
+  return slug ? `${base}/tender/${t.id}/${slug}` : `${base}/tender/${t.id}`;
+};
+
 const escapeHtml = (value: string) =>
   value
     .replace(/&/g, "&amp;")
@@ -126,7 +141,7 @@ const buildHtml = (rows: MatchedTender[], pref: AlertPreference) => {
 
   const cards = rows
     .map((t) => {
-      const href = `${base}/tender/${t.id}`;
+      const href = tenderHref(base, t);
       const title = escapeHtml(truncate(t.title, 60));
       const metaParts = [t.procuring_entity, t.country].filter(Boolean);
       if (t.isReminder) metaParts.push("Reminder — still open");
@@ -184,7 +199,7 @@ const buildText = (rows: MatchedTender[], pref: AlertPreference) => {
       t.country ? `  Country: ${t.country}` : null,
       t.category ? `  Category: ${t.category}` : null,
       t.deadline ? `  Deadline: ${new Date(t.deadline).toLocaleDateString()}` : null,
-      `  Link: ${base}/tender/${t.id}`,
+      `  Link: ${tenderHref(base, t)}`,
     ].filter(Boolean).join("\n")
   );
   return `Tamboti Tenders alert\n\n${rows.length} ${rows.length === 1 ? "tender" : "tenders"} matching your alert.\n\n${lines.join("\n\n")}\n\nManage alerts: ${base}/alerts/${pref.id}\nUnsubscribe: ${base}/alerts/${pref.id}/unsubscribe`;

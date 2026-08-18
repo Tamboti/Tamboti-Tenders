@@ -4,7 +4,7 @@ import { BookmarkCheck, Clock, Search, Globe, Layers, Circle, ChevronDown, Check
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Tender } from "@/lib/types";
-import { displayTitle, TENDER_LIST_COLUMNS } from "@/lib/tenderLanguage";
+import { displayTitle, TENDER_LIST_COLUMNS, tenderPath } from "@/lib/tenderLanguage";
 import { SourceLanguageBadge, TranslationStatusBadge } from "@/components/tender/LanguageBadges";
 import { resolveCountryDisplay } from "@/lib/countries";
 import { useCountryReference } from "@/hooks/use-country-reference";
@@ -655,7 +655,7 @@ const Bookmarks = () => {
         <TenderTable
           tenders={pageItems}
           loading={loading}
-          onRowClick={(t) => navigate(`/tender/${t.id}`)}
+          onRowClick={(t) => navigate(tenderPath(t))}
           leadingAction={() => ({ type: "bookmark-remove", isBookmarked: true })}
           onLeadingAction={(t, e) => removeBookmark(t.id, e)}
           emptyState={
@@ -686,11 +686,11 @@ const Bookmarks = () => {
               <div
                 key={t.id}
                 className="relative rounded-2xl border border-border/70 bg-card p-4 shadow-sm cursor-pointer active:bg-muted/30 active:scale-[0.99] transition-all"
-                onClick={() => navigate(`/tender/${t.id}`)}
+                onClick={() => navigate(tenderPath(t))}
                 role="button"
                 tabIndex={0}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate(`/tender/${t.id}`); }
+                  if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate(tenderPath(t)); }
                 }}
               >
                 <div className="flex items-start gap-3">

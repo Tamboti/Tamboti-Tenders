@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Tender } from "@/lib/types";
 import { StatusBadge } from "@/components/StatusBadge";
 import { daysUntil, formatDate } from "@/lib/format";
-import { displayTitle } from "@/lib/tenderLanguage";
+import { displayTitle, tenderPath } from "@/lib/tenderLanguage";
 import { resolveCountryDisplay } from "@/lib/countries";
 import { useCountryReference } from "@/hooks/use-country-reference";
 import { ArrowRight, Building2, Globe, Clock, X } from "lucide-react";
@@ -67,7 +67,7 @@ export const TenderQuickView = ({
 
   const goToFullPage = () => {
     onOpenChange(false);
-    navigate(`/tender/${tender?.id}`);
+    if (tender) navigate(tenderPath(tender));
   };
 
   return (

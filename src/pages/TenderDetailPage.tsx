@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { Tender } from "@/lib/types";
@@ -8,7 +8,7 @@ import { ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { Seo } from "@/components/seo/Seo";
-import { displayTitle } from "@/lib/tenderLanguage";
+import { displayTitle, tenderPath } from "@/lib/tenderLanguage";
 import { trackEvent } from "@/lib/analytics";
 
 /* ─── Shimmer primitive ──────────────────────────────────────────── */
@@ -183,6 +183,7 @@ const NotFound = () => (
 const TenderDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [tender, setTender] = useState<Tender | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -205,6 +206,18 @@ const TenderDetailPage = () => {
 
   useEffect(() => { load(); }, [id]);
 
+  // Once loaded, canonicalize the address bar to the title-slugged path —
+  // covers old bookmarked/emailed bare `/tender/:id` links and any stale
+  // slug (title changed since a link was shared) without a redirect loop,
+  // since this only fires when the path is actually wrong.
+  useEffect(() => {
+    if (!tender) return;
+    const correctPath = tenderPath(tender);
+    if (location.pathname !== correctPath) {
+      navigate(correctPath, { replace: true });
+    }
+  }, [tender, location.pathname, navigate]);
+
   return (
     <PageContainer className="max-w-5xl space-y-6">
 
@@ -212,7 +225,7 @@ const TenderDetailPage = () => {
         <Seo
           title={displayTitle(tender)}
           description={tender.summary_en ?? undefined}
-          url={typeof window !== "undefined" ? window.location.href : undefined}
+          url={typeof window !== "undefined" ? `${window.location.origin}${tenderPath(tender)}` : undefined}
           type="article"
           jsonLd={{
             "@context": "https://schema.org",
@@ -223,7 +236,8 @@ const TenderDetailPage = () => {
             dateModified: tender.updated_at ?? undefined,
             author: { "@type": "Organization", name: "Tamboti Tenders" },
             publisher: { "@type": "Organization", name: "Tamboti Tenders" },
-            mainEntityOfPage: typeof window !== "undefined" ? window.location.href : undefined,
+            mainEntityOfPage:
+              typeof window !== "undefined" ? `${window.location.origin}${tenderPath(tender)}` : undefined,
           }}
         />
       )}

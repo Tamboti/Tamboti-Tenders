@@ -20,6 +20,16 @@ const STATIC_ROUTES = ["/", "/tenders", "/blog"];
 
 const xmlEscape = (s: string) => s.replace(/&/g, "&amp;");
 
+// Mirrors src/lib/slug.ts — kept in sync by hand since Deno functions can't
+// import from src/.
+const slugify = (s: string) =>
+  s
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -41,7 +51,7 @@ Deno.serve(async (req: Request) => {
   const sitemapCutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
   const { data: tenders } = await supabase
     .from("tenders")
-    .select("id, updated_at")
+    .select("id, title, title_en, updated_at")
     .or(`deadline.is.null,deadline.gte.${sitemapCutoff}`);
 
   const staticUrls = STATIC_ROUTES.map(
@@ -53,12 +63,13 @@ Deno.serve(async (req: Request) => {
         new Date(p.updated_at).toISOString().slice(0, 10)
       }</lastmod></url>`
   );
-  const tenderUrls = (tenders ?? []).map(
-    (t) =>
-      `  <url><loc>${xmlEscape(APP_URL + "/tender/" + t.id)}</loc><lastmod>${
-        new Date(t.updated_at).toISOString().slice(0, 10)
-      }</lastmod></url>`
-  );
+  const tenderUrls = (tenders ?? []).map((t) => {
+    const slug = slugify(t.title_en ?? t.title ?? "");
+    const path = slug ? `/tender/${t.id}/${slug}` : `/tender/${t.id}`;
+    return `  <url><loc>${xmlEscape(APP_URL + path)}</loc><lastmod>${
+      new Date(t.updated_at).toISOString().slice(0, 10)
+    }</lastmod></url>`;
+  });
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${[...staticUrls, ...postUrls, ...tenderUrls].join("\n")}\n</urlset>\n`;
 

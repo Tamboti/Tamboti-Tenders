@@ -14,7 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { TENDER_LIST_COLUMNS, displayTitle } from "@/lib/tenderLanguage";
+import { TENDER_LIST_COLUMNS, displayTitle, tenderPath } from "@/lib/tenderLanguage";
 import { Tender } from "@/lib/types";
 import { handleDbError } from "@/lib/dbError";
 import { Button } from "@/components/ui/button";
@@ -275,7 +275,7 @@ export const Landing = () => {
           {/* Cards — small/medium screens */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:hidden">
             {featuredQuery.data.map((t, idx) => (
-              <TenderCard key={t.id} t={t} idx={idx} onClick={() => navigate(`/tender/${t.id}`)} />
+              <TenderCard key={t.id} t={t} idx={idx} onClick={() => navigate(tenderPath(t))} />
             ))}
           </div>
 
@@ -303,7 +303,7 @@ export const Landing = () => {
                   <TableRow
                     key={t.id}
                     className="cursor-pointer border-b border-border/50 last:border-0"
-                    onClick={() => navigate(`/tender/${t.id}`)}
+                    onClick={() => navigate(tenderPath(t))}
                   >
                     <TableCell className="max-w-[28rem] px-4 py-3.5 align-middle">
                       <div className="min-w-0 space-y-0.5">
