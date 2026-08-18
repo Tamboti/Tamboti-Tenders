@@ -344,11 +344,9 @@ export const TenderDetail = ({
 
   return (
     <div className="space-y-8 pb-2">
-      {/* ── Utility row — internal tools (workflow status, save), kept quiet
-          and out of the way of the title/reading content below ── */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        
-
+      {/* ── Utility row — source link + save, kept quiet and out of the
+          way of the title/reading content below ── */}
+      <div className="flex flex-wrap items-center justify-end gap-3">
         <div className="flex shrink-0 items-center gap-2">
           {/* Gated the same as the summary/description below — otherwise a
               free user could skip the paywall entirely via the original

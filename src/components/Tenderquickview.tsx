@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -6,13 +5,10 @@ import { Tender } from "@/lib/types";
 import { StatusBadge } from "@/components/StatusBadge";
 import { daysUntil, formatDate } from "@/lib/format";
 import { displayTitle } from "@/lib/tenderLanguage";
-import { SourceLanguageBadge, TranslationStatusBadge } from "@/components/tender/LanguageBadges";
 import { resolveCountryDisplay } from "@/lib/countries";
 import { useCountryReference } from "@/hooks/use-country-reference";
-import { supabase } from "@/integrations/supabase/client";
 import { ArrowRight, Building2, Globe, Clock, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { splitIntoParagraphs } from "@/lib/textFormat";
 
 interface TenderQuickViewProps {
   tender: Tender | null;
@@ -69,35 +65,6 @@ export const TenderQuickView = ({
 }: TenderQuickViewProps) => {
   const navigate = useNavigate();
 
-  // `tender` here is a row from the list query, which only carries the
-  // compact columns used for the table/cards (see TENDER_LIST_COLUMNS) —
-  // description isn't among them, so it's fetched separately once the panel
-  // actually opens rather than bloating every row in the list fetch.
-  const [description, setDescription] = useState<string | null>(null);
-  const [descriptionLoading, setDescriptionLoading] = useState(false);
-
-  useEffect(() => {
-    if (!open || !tender?.id) {
-      setDescription(null);
-      return;
-    }
-    let cancelled = false;
-    setDescriptionLoading(true);
-    supabase
-      .from("tenders")
-      .select("description, description_en")
-      .eq("id", tender.id)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (cancelled) return;
-        setDescriptionLoading(false);
-        setDescription((data?.description_en ?? data?.description) || null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [open, tender?.id]);
-
   const goToFullPage = () => {
     onOpenChange(false);
     navigate(`/tender/${tender?.id}`);
@@ -131,8 +98,6 @@ export const TenderQuickView = ({
                     {formatDate(tender.deadline)}
                   </span>
                 )}
-                <SourceLanguageBadge sourceLanguage={tender.source_language} />
-                <TranslationStatusBadge status={tender.translation_status} />
               </div>
 
               {/* Title */}
@@ -170,35 +135,6 @@ export const TenderQuickView = ({
                     <p className="text-[13px] leading-relaxed text-muted-foreground">
                       {tender.summary_en}
                     </p>
-                  </div>
-                </>
-              )}
-
-              {/* Description — just a teaser here (paragraph 1, clamped),
-                  faded out at the bottom since this is a preview panel, not
-                  the full read. "View full details" below is the way to
-                  read the rest, formatted into paragraphs on that page. */}
-              {(descriptionLoading || description) && (
-                <>
-                  <div className="border-t border-border/40" />
-                  <div className="space-y-2">
-                    <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">
-                      Description
-                    </p>
-                    {descriptionLoading ? (
-                      <div className="space-y-1.5">
-                        <div className="h-3 w-full animate-pulse rounded bg-muted/60" />
-                        <div className="h-3 w-[85%] animate-pulse rounded bg-muted/60" />
-                        <div className="h-3 w-[60%] animate-pulse rounded bg-muted/60" />
-                      </div>
-                    ) : (
-                      <div className="relative">
-                        <p className="line-clamp-4 text-[13px] leading-relaxed text-muted-foreground">
-                          {splitIntoParagraphs(description!)[0]}
-                        </p>
-                        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-6 bg-gradient-to-t from-background to-transparent" />
-                      </div>
-                    )}
                   </div>
                 </>
               )}

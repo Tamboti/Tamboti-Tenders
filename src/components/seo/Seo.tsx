@@ -22,7 +22,7 @@ export const Seo = ({
   noIndex?: boolean;
   jsonLd?: Record<string, unknown>;
 }) => {
-  const fullTitle = `${title} — ${SITE_NAME}`;
+  const fullTitle = `${title} - ${SITE_NAME}`;
 
   return (
     <Helmet>

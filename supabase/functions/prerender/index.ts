@@ -83,7 +83,7 @@ const page = (opts: {
   noIndex?: boolean;
   status?: number;
 }) => {
-  const fullTitle = `${opts.title} — ${SITE_NAME}`;
+  const fullTitle = `${opts.title} - ${SITE_NAME}`;
   const html = `<!doctype html>
 <html lang="en">
 <head>
@@ -216,7 +216,7 @@ async function renderTender(supabase: ReturnType<typeof createClient>, id: strin
 
   const bodyHtml = `
 <article>
-  <p><a href="${APP_URL}/tenders">${esc(SITE_NAME)} &mdash; Browse tenders</a></p>
+  <p><a href="${APP_URL}/tenders">${esc(SITE_NAME)} - Browse tenders</a></p>
   <h1>${esc(title)}</h1>
   <ul>
     ${metaRows.join("\n    ")}
