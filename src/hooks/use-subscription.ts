@@ -130,7 +130,7 @@ export const useCheckoutRedirectResult = () => {
 
     if (checkout === "success") {
       setResult("success");
-      toast.success("Payment received — activating your Pro plan…");
+      toast.success("Payment received - activating your Pro plan…");
       // The webhook that flips `subscriptions.status` can lag the redirect
       // by a second or two, so give it a few retries rather than showing
       // "still on Free" right away.
@@ -145,7 +145,7 @@ export const useCheckoutRedirectResult = () => {
 
     if (checkout === "cancel") {
       setResult("cancel");
-      toast.info("Checkout cancelled — you're still on the Free plan.");
+      toast.info("Checkout cancelled - you're still on the Free plan.");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

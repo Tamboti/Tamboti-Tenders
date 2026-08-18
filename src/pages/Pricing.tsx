@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
@@ -6,6 +6,7 @@ import { useSubscription, useBillingActions, useCheckoutRedirectResult } from "@
 import { Button } from "@/components/ui/button";
 import { Check } from "@/components/icons";
 import { Seo } from "@/components/seo/Seo";
+import { PaymentSuccessOverlay } from "@/components/billing/PaymentSuccessOverlay";
 import {
   FREE_ALERT_LIMIT,
   FREE_BOOKMARK_LIMIT,
@@ -38,8 +39,13 @@ export const Pricing = () => {
   const { user } = useAuth();
   const { isPro, isLoading: subLoading } = useSubscription();
   const { startCheckout, openPortal, checkoutBusy, portalBusy } = useBillingActions();
-  useCheckoutRedirectResult();
+  const checkoutResult = useCheckoutRedirectResult();
   const [billingInterval, setBillingInterval] = useState<BillingInterval>("monthly");
+  const [showSuccessOverlay, setShowSuccessOverlay] = useState(false);
+
+  useEffect(() => {
+    if (checkoutResult === "success") setShowSuccessOverlay(true);
+  }, [checkoutResult]);
 
   const upgrade = () => {
     if (!user) {
@@ -205,6 +211,14 @@ export const Pricing = () => {
           </motion.div>
         </motion.div>
       </section>
+
+      <PaymentSuccessOverlay
+        open={showSuccessOverlay}
+        onDismiss={() => {
+          setShowSuccessOverlay(false);
+          navigate("/portal/tenders");
+        }}
+      />
     </div>
   );
 };

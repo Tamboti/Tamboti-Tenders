@@ -151,17 +151,26 @@ const Stat = ({
   label,
   value,
   sub,
+  onClick,
 }: {
   label: string;
   value: string | number;
   sub?: string;
-}) => (
-  <div>
-    <div style={{ fontSize: 12, opacity: 0.6 }}>{label}</div>
-    <div style={{ fontSize: 24, fontWeight: 600 }}>{value}</div>
-    {sub && <div style={{ fontSize: 12, opacity: 0.6 }}>{sub}</div>}
-  </div>
-);
+  onClick?: () => void;
+}) => {
+  const Tag = onClick ? "button" : "div";
+  return (
+    <Tag
+      type={onClick ? "button" : undefined}
+      onClick={onClick}
+      className={onClick ? "text-left transition-opacity hover:opacity-70" : undefined}
+    >
+      <div style={{ fontSize: 12, opacity: 0.6 }}>{label}</div>
+      <div style={{ fontSize: 24, fontWeight: 600 }}>{value}</div>
+      {sub && <div style={{ fontSize: 12, opacity: 0.6 }}>{sub}</div>}
+    </Tag>
+  );
+};
 
 type FilterOption = {
   value: string;
@@ -890,7 +899,7 @@ const Tenders = () => {
               <Stat label="Closing soon" value={urgentCount} />
             </div>
             <div className="pl-5 sm:pl-8">
-              <Stat label="Saved" value={bookmarks.size} />
+              <Stat label="Saved" value={bookmarks.size} onClick={() => navigate("/portal/bookmarks")} />
             </div>
           </div>
         </motion.div>
