@@ -3,7 +3,7 @@
 // Billing/Pricing pages both depend on this being correct.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import Stripe from "https://esm.sh/stripe@17.4.0?target=deno";
+import Stripe from "npm:stripe@17.4.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
