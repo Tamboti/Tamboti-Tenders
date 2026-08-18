@@ -4,6 +4,28 @@
       "source": "/sitemap.xml",
       "destination": "https://gdbodrzxdbtskyzmqmuu.supabase.co/functions/v1/sitemap"
     },
+    {
+      "source": "/blog/:slug",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(Googlebot|AdsBot-Google|Mediapartners-Google|bingbot|Slurp|DuckDuckBot|Baiduspider|YandexBot|Sogou|Exabot|facebookexternalhit|Facebot|Twitterbot|LinkedInBot|WhatsApp|TelegramBot|Discordbot|SkypeUriPreview|redditbot|Applebot|GPTBot|ChatGPT-User|OAI-SearchBot|CCBot|anthropic-ai|ClaudeBot|Claude-Web|PerplexityBot|Bytespider|AhrefsBot|SemrushBot|MJ12bot|DotBot).*"
+        }
+      ],
+      "destination": "https://gdbodrzxdbtskyzmqmuu.supabase.co/functions/v1/prerender?path=/blog/:slug"
+    },
+    {
+      "source": "/tender/:id",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(Googlebot|AdsBot-Google|Mediapartners-Google|bingbot|Slurp|DuckDuckBot|Baiduspider|YandexBot|Sogou|Exabot|facebookexternalhit|Facebot|Twitterbot|LinkedInBot|WhatsApp|TelegramBot|Discordbot|SkypeUriPreview|redditbot|Applebot|GPTBot|ChatGPT-User|OAI-SearchBot|CCBot|anthropic-ai|ClaudeBot|Claude-Web|PerplexityBot|Bytespider|AhrefsBot|SemrushBot|MJ12bot|DotBot).*"
+        }
+      ],
+      "destination": "https://gdbodrzxdbtskyzmqmuu.supabase.co/functions/v1/prerender?path=/tender/:id"
+    },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

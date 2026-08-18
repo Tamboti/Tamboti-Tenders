@@ -214,6 +214,17 @@ const TenderDetailPage = () => {
           description={tender.summary_en ?? undefined}
           url={typeof window !== "undefined" ? window.location.href : undefined}
           type="article"
+          jsonLd={{
+            "@context": "https://schema.org",
+            "@type": "Article",
+            headline: displayTitle(tender),
+            description: tender.summary_en ?? undefined,
+            datePublished: tender.publication_date ?? undefined,
+            dateModified: tender.updated_at ?? undefined,
+            author: { "@type": "Organization", name: "Tamboti Tenders" },
+            publisher: { "@type": "Organization", name: "Tamboti Tenders" },
+            mainEntityOfPage: typeof window !== "undefined" ? window.location.href : undefined,
+          }}
         />
       )}
 

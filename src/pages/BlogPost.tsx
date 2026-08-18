@@ -79,6 +79,17 @@ const BlogPost = () => {
         image={post.cover_image_url ?? undefined}
         url={typeof window !== "undefined" ? window.location.href : undefined}
         type="article"
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "BlogPosting",
+          headline: post.title,
+          description: post.seo_description ?? post.excerpt ?? undefined,
+          image: post.cover_image_url ?? undefined,
+          datePublished: post.published_at ?? undefined,
+          author: { "@type": "Organization", name: "Tamboti Tenders" },
+          publisher: { "@type": "Organization", name: "Tamboti Tenders" },
+          mainEntityOfPage: typeof window !== "undefined" ? window.location.href : undefined,
+        }}
       />
 
       <Link

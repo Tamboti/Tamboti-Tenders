@@ -13,7 +13,4 @@ Allow: /
 User-agent: *
 Allow: /
 
-# TODO: uncomment once a production domain is chosen (Sitemap: must be an
-# absolute URL per the sitemap spec) — the file itself is already served at
-# /sitemap.xml via the vercel.json rewrite.
-# Sitemap: https://<production-domain>/sitemap.xml
+Sitemap: https://www.tambotitender.com/sitemap.xml

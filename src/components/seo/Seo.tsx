@@ -12,6 +12,7 @@ export const Seo = ({
   url,
   type = "website",
   noIndex = false,
+  jsonLd,
 }: {
   title: string;
   description?: string;
@@ -19,6 +20,7 @@ export const Seo = ({
   url?: string;
   type?: "website" | "article";
   noIndex?: boolean;
+  jsonLd?: Record<string, unknown>;
 }) => {
   const fullTitle = `${title} — ${SITE_NAME}`;
 
@@ -40,6 +42,12 @@ export const Seo = ({
       <meta name="twitter:image" content={image} />
 
       {url && <link rel="canonical" href={url} />}
+
+      {jsonLd && (
+        <script type="application/ld+json">
+          {JSON.stringify(jsonLd).replace(/</g, "\\u003c")}
+        </script>
+      )}
     </Helmet>
   );
 };
