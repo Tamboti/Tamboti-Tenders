@@ -75,21 +75,24 @@ Deno.serve(async (req: Request): Promise<Response> => {
   }
 
   // action === "list" (default)
-  const { data: profiles, error: profErr } = await service
-    .from("user_profiles")
-    .select("id, role, full_name, created_at")
-    .order("created_at", { ascending: false });
-  if (profErr) return json(500, { error: profErr.message });
+  // These three are independent — run them together instead of one after
+  // another. auth.admin.listUsers() in particular is a separate, slower
+  // Auth Admin API call (not a plain table query), so serializing it behind
+  // the other two was the main reason this page felt slower than Sources
+  // or Analytics, which only ever hit plain tables.
+  const [profilesRes, authRes, subsRes] = await Promise.all([
+    service.from("user_profiles").select("id, role, full_name, created_at").order("created_at", { ascending: false }),
+    service.auth.admin.listUsers({ perPage: 1000 }),
+    service.from("subscriptions").select("user_id, status, current_period_end"),
+  ]);
 
-  const { data: authData, error: authErr } = await service.auth.admin.listUsers({ perPage: 1000 });
-  if (authErr) return json(500, { error: authErr.message });
-  const emailById = new Map(authData.users.map((u) => [u.id, u.email ?? null]));
+  if (profilesRes.error) return json(500, { error: profilesRes.error.message });
+  if (authRes.error) return json(500, { error: authRes.error.message });
+  if (subsRes.error) return json(500, { error: subsRes.error.message });
 
-  const { data: subs, error: subErr } = await service
-    .from("subscriptions")
-    .select("user_id, status, current_period_end");
-  if (subErr) return json(500, { error: subErr.message });
-  const subByUser = new Map((subs ?? []).map((s) => [s.user_id, s]));
+  const profiles = profilesRes.data;
+  const emailById = new Map(authRes.data.users.map((u) => [u.id, u.email ?? null]));
+  const subByUser = new Map((subsRes.data ?? []).map((s) => [s.user_id, s]));
 
   const users = (profiles ?? []).map((p) => {
     const sub = subByUser.get(p.id) as { status: string; current_period_end: string | null } | undefined;

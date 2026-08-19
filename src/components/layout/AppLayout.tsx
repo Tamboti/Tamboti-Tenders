@@ -1,11 +1,32 @@
+import { useEffect } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
 import { PortalBottomNav } from "./PortalBottomNav";
+import { ADMIN_PORTAL_CHUNK_LOADERS } from "@/lib/lazyRoutes";
 
 export const AppLayout = () => {
   const location = useLocation();
+
+  // Fires once per session on entering the dashboard shell (this layout
+  // doesn't remount between tabs, only its <Outlet /> content changes) —
+  // warms every other admin/portal chunk in the background so clicking a
+  // tab you haven't visited yet doesn't have to wait on a fresh fetch.
+  // Delayed slightly so it doesn't compete with the current tab's own data
+  // requests right as it's loading.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      ADMIN_PORTAL_CHUNK_LOADERS.forEach((load) => {
+        load().catch(() => {
+          // Best-effort cache warming — a failed prefetch just means the
+          // real navigation later fetches it normally, nothing to handle.
+        });
+      });
+    }, 300);
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
     // h-dvh, not h-screen — 100vh on mobile is sized against the browser's
     // largest possible viewport (toolbar collapsed), not what's actually

@@ -24,21 +24,36 @@ import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound.tsx";
 import { RouteTracker } from "@/components/analytics/RouteTracker";
 import { ScrollToTop } from "@/components/layout/ScrollToTop";
+import {
+  loadAlerts,
+  loadSources,
+  loadBookmarks,
+  loadBilling,
+  loadPostsAdmin,
+  loadAnalytics,
+  loadAdminUsers,
+} from "@/lib/lazyRoutes";
 
 // Everything behind RequireAuth (the member portal + admin dashboard) is
 // lazy-loaded — none of it belongs in the bundle a first-time anonymous
 // visitor downloads just to see the landing page. The rich-text editor
-// (PostsAdmin) and charts (Analytics) are the heaviest offenders.
-const Alerts = lazy(() => import("./pages/Alerts"));
-const Sources = lazy(() => import("./pages/Sources"));
-const Bookmarks = lazy(() => import("./pages/Bookmarks"));
-const Billing = lazy(() => import("./pages/Billing"));
-const PostsAdmin = lazy(() => import("./pages/admin/PostsAdmin"));
-const Analytics = lazy(() => import("./pages/admin/Analytics"));
-const AdminUsers = lazy(() => import("./pages/admin/Users"));
+// (PostsAdmin) and charts (Analytics) are the heaviest offenders. These
+// share their import functions with lazyRoutes.ts, which AppLayout uses to
+// prefetch the rest of this set in the background once you're in the
+// dashboard, so switching tabs after the first one doesn't hit this
+// fallback again.
+const Alerts = lazy(loadAlerts);
+const Sources = lazy(loadSources);
+const Bookmarks = lazy(loadBookmarks);
+const Billing = lazy(loadBilling);
+const PostsAdmin = lazy(loadPostsAdmin);
+const Analytics = lazy(loadAnalytics);
+const AdminUsers = lazy(loadAdminUsers);
 
+// Fits inside AppLayout's <main>, not the full viewport — Sidebar stays put
+// while this shows, so only ever the content area appears to "reload".
 const RouteFallback = () => (
-  <div className="grid min-h-screen place-items-center bg-background">
+  <div className="grid min-h-[50vh] place-items-center">
     <div className="text-sm text-muted-foreground">Loading...</div>
   </div>
 );

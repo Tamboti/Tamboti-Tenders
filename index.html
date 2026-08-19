@@ -16,6 +16,10 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- Every tender/stats/bookmark fetch on first load hits this origin —
+         without a preconnect hint it's the browser's first-ever contact
+         with it, paying DNS+TCP+TLS setup cost on the critical path. -->
+    <link rel="preconnect" href="https://gdbodrzxdbtskyzmqmuu.supabase.co" crossorigin />
     <!-- Loaded as a non-blocking preload instead of a plain stylesheet link —
          a synchronous <link rel="stylesheet"> here holds up first paint until
          Google Fonts responds. The noscript fallback covers non-JS clients. -->
