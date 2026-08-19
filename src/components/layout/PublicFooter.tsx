@@ -21,6 +21,9 @@ export const PublicFooter = () => (
             <Link to="/tenders" className="block text-muted-foreground hover:text-foreground">
               Browse tenders
             </Link>
+            <Link to="/pricing" className="block text-muted-foreground hover:text-foreground">
+              Pricing
+            </Link>
             <Link to="/blog" className="block text-muted-foreground hover:text-foreground">
               Blog
             </Link>
@@ -32,6 +35,15 @@ export const PublicFooter = () => (
             </Link>
             <Link to="/login?mode=signup" className="block text-muted-foreground hover:text-foreground">
               Sign up
+            </Link>
+          </div>
+          <div className="space-y-2">
+            <div className="font-medium text-foreground">Legal</div>
+            <Link to="/terms" className="block text-muted-foreground hover:text-foreground">
+              Terms of Service
+            </Link>
+            <Link to="/privacy" className="block text-muted-foreground hover:text-foreground">
+              Privacy Policy
             </Link>
           </div>
         </nav>

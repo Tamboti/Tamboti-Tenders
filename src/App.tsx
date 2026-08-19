@@ -5,7 +5,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/theme-provider";
-import { AuthProvider } from "@/contexts/AuthContext";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { PublicLayout } from "@/components/layout/PublicLayout";
 import RequireAuth from "@/components/auth/RequireAuth";
@@ -16,6 +16,8 @@ import Tenders from "./pages/Tenders";
 import TenderDetailPage from "./pages/TenderDetailPage";
 import Blog from "./pages/Blog";
 import BlogPost from "./pages/BlogPost";
+import Terms from "./pages/Terms";
+import Privacy from "./pages/Privacy";
 import Alerts from "./pages/Alerts";
 import Sources from "./pages/Sources";
 import Bookmarks from "./pages/Bookmarks";
@@ -29,6 +31,17 @@ import { RouteTracker } from "@/components/analytics/RouteTracker";
 import { ScrollToTop } from "@/components/layout/ScrollToTop";
 
 const queryClient = new QueryClient();
+
+// /tenders is the public marketing-shell version of the tenders list —
+// once someone's signed in they should land in the portal instead, same
+// page underneath (Tenders is reused by both routes) but with the
+// dashboard chrome. /tender/:id stays public for everyone regardless of
+// auth state (shared links, SEO).
+const PublicTendersRoute = () => {
+  const { user, loading } = useAuth();
+  if (!loading && user) return <Navigate to="/portal/tenders" replace />;
+  return <Tenders />;
+};
 
 const App = () => (
   <HelmetProvider>
@@ -47,11 +60,13 @@ const App = () => (
                 <Route element={<PublicLayout />}>
                   <Route path="/" element={<Landing />} />
                   <Route path="/pricing" element={<Pricing />} />
-                  <Route path="/tenders" element={<Tenders />} />
+                  <Route path="/tenders" element={<PublicTendersRoute />} />
                   <Route path="/tender/:id" element={<TenderDetailPage />} />
                   <Route path="/tender/:id/:slug" element={<TenderDetailPage />} />
                   <Route path="/blog" element={<Blog />} />
                   <Route path="/blog/:slug" element={<BlogPost />} />
+                  <Route path="/terms" element={<Terms />} />
+                  <Route path="/privacy" element={<Privacy />} />
                   {/* Old unprefixed/public-shell URLs — redirect so
                       bookmarked/shared links still land correctly. */}
                   <Route path="/bookmarks" element={<Navigate to="/portal/bookmarks" replace />} />

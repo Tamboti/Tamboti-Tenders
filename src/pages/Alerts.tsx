@@ -645,7 +645,7 @@ const Alerts = () => {
 
   const openCreate = () => {
     if (!isPro && alerts.length >= FREE_ALERT_LIMIT) {
-      toast.error(`Free plan limit reached — ${FREE_ALERT_LIMIT} alert. Upgrade to Pro for unlimited.`, {
+      toast.error(`Free plan limit reached - ${FREE_ALERT_LIMIT} alert. Upgrade to Pro for unlimited.`, {
         action: { label: "Upgrade", onClick: () => navigate("/pricing") },
       });
       return;
@@ -709,7 +709,7 @@ const Alerts = () => {
       if (error) {
         if (isPlanLimitError(error)) {
           closeModal();
-          toast.error(`Free plan limit reached — ${FREE_ALERT_LIMIT} alert. Upgrade to Pro for unlimited.`, {
+          toast.error(`Free plan limit reached - ${FREE_ALERT_LIMIT} alert. Upgrade to Pro for unlimited.`, {
             action: { label: "Upgrade", onClick: () => navigate("/pricing") },
           });
           return;

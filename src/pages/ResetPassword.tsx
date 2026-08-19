@@ -38,7 +38,7 @@ const ResetPassword = () => {
       toast.error(error.message || "Could not update password");
       return;
     }
-    toast.success("Password updated — signing you in.");
+    toast.success("Password updated - signing you in.");
     setDone(true);
   };
 

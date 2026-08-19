@@ -1,20 +1,15 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useCountryReference } from "@/hooks/use-country-reference";
-import { TenderCard, DeadlinePill } from "@/components/tender/TenderCard";
-import { CountryCell } from "@/components/tender/CountryCell";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { TENDER_LIST_COLUMNS, displayTitle, tenderPath } from "@/lib/tenderLanguage";
+import { useSubscription } from "@/hooks/use-subscription";
+import { TenderCard } from "@/components/tender/TenderCard";
+import { TenderTable } from "@/components/tender/TenderTable";
+import { TenderQuickView } from "@/components/Tenderquickview";
+import { TENDER_LIST_COLUMNS } from "@/lib/tenderLanguage";
 import { Tender } from "@/lib/types";
 import { handleDbError } from "@/lib/dbError";
 import { Button } from "@/components/ui/button";
@@ -28,7 +23,9 @@ import { Search, Bell, Bookmark, Globe } from "@/components/icons";
 import { Seo } from "@/components/seo/Seo";
 import { useAuth } from "@/contexts/AuthContext";
 import { fadeUp, staggerContainer } from "@/lib/motion";
-import { PRO_PRICE_USD } from "@/lib/plan";
+import { PRO_PRICE_USD, FREE_VISIBILITY_DAYS, isPlanLimitError, isWithinFreeVisibilityWindow } from "@/lib/plan";
+import { getAnonUserId } from "@/lib/anonUser";
+import { trackEvent } from "@/lib/analytics";
 
 // Set this once a real hero image is ready — the placeholder renders until then.
 const HERO_IMAGE_URL: string | null = "https://gdbodrzxdbtskyzmqmuu.supabase.co/storage/v1/object/public/Company%20assets/ChatGPT_Image_Jul_22__2026__06_34_52_PM-removebg-preview.png";
@@ -85,7 +82,7 @@ const FAQ_ITEMS = [
   {
     question: "What's free and what's paid?",
     answer:
-      `Browsing and searching every tender is free, no account required, and a free account gets you full detail on tenders closing within 30 days plus a handful of bookmarks and one alert. Pro ($${PRO_PRICE_USD}/month) removes those limits and gives you early visibility — you see tenders as soon as they're published instead of waiting until the deadline gets close. See the Pricing page for the full comparison.`,
+      `Browsing and searching every tender is free, no account required, and a free account gets you full detail on tenders closing within 30 days plus a handful of bookmarks and one alert. Pro ($${PRO_PRICE_USD}/month) removes those limits and gives you early visibility - you see tenders as soon as they're published instead of waiting until the deadline gets close. See the Pricing page for the full comparison.`,
   },
   {
     question: "Which countries are covered?",
@@ -98,7 +95,14 @@ export const Landing = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { byIso2 } = useCountryReference();
+  const { isPro } = useSubscription();
+  const queryClient = useQueryClient();
   const [Icon0, Icon1, Icon2] = VALUE_PROPS.map((p) => p.icon);
+  const uid = user?.id ?? getAnonUserId();
+
+  const [bookmarks, setBookmarks] = useState<Set<string>>(new Set());
+  const [quickViewTender, setQuickViewTender] = useState<Tender | null>(null);
+  const [quickViewOpen, setQuickViewOpen] = useState(false);
 
   const todayIso = useMemo(() => getTodayIsoDate(), []);
   const closingSoonMaxIso = useMemo(() => {
@@ -168,6 +172,81 @@ export const Landing = () => {
     gcTime: 10 * 60_000,
     refetchOnWindowFocus: false,
   });
+
+  // Same query key as Tenders.tsx — shares the cache so a bookmark toggled
+  // here is already reflected if the visitor goes on to /tenders.
+  const bookmarksQuery = useQuery({
+    queryKey: ["tender-bookmarks", uid],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("tender_bookmarks")
+        .select("tender_id")
+        .eq("user_id", uid);
+      if (error) throw new Error(handleDbError(error));
+      return new Set((data ?? []).map((d) => d.tender_id));
+    },
+    staleTime: 60_000,
+    gcTime: 10 * 60_000,
+    refetchOnWindowFocus: false,
+  });
+
+  useEffect(() => {
+    if (bookmarksQuery.data) setBookmarks(bookmarksQuery.data);
+  }, [bookmarksQuery.data]);
+
+  // Mirrors Tenders.tsx's openQuickView — same paywall check, so a free
+  // visitor can't see full detail on a not-yet-close tender from the
+  // landing preview when they couldn't from the Tenders page either.
+  const openQuickView = (t: Tender) => {
+    if (!isPro && !isWithinFreeVisibilityWindow(t.deadline)) {
+      toast.error(
+        `This tender closes in more than ${FREE_VISIBILITY_DAYS} days - upgrade to Pro to view it now.`,
+        { action: { label: "Upgrade", onClick: () => navigate("/pricing") } }
+      );
+      return;
+    }
+    setQuickViewTender(t);
+    setQuickViewOpen(true);
+  };
+
+  const toggleBookmark = async (tenderId: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    if (!user) {
+      toast.error("Sign in to save tenders");
+      return;
+    }
+    const has = bookmarks.has(tenderId);
+    if (has) {
+      const { error } = await supabase
+        .from("tender_bookmarks").delete().eq("user_id", uid).eq("tender_id", tenderId);
+      if (error) return toast.error(handleDbError(error));
+      setBookmarks((b) => {
+        const n = new Set(b);
+        n.delete(tenderId);
+        queryClient.setQueryData(["tender-bookmarks", uid], n);
+        return n;
+      });
+      trackEvent("bookmark_toggle", { action: "remove", tender_id: tenderId });
+    } else {
+      const { error } = await supabase
+        .from("tender_bookmarks").insert({ user_id: uid, tender_id: tenderId });
+      if (error) {
+        if (isPlanLimitError(error)) {
+          toast.error("Free plan limit reached - up to 5 bookmarks. Upgrade to Pro for unlimited.", {
+            action: { label: "Upgrade", onClick: () => navigate("/pricing") },
+          });
+          return;
+        }
+        return toast.error(handleDbError(error));
+      }
+      setBookmarks((b) => {
+        const n = new Set(b).add(tenderId);
+        queryClient.setQueryData(["tender-bookmarks", uid], n);
+        return n;
+      });
+      trackEvent("bookmark_toggle", { action: "add", tender_id: tenderId });
+    }
+  };
 
   return (
     <div>
@@ -252,7 +331,9 @@ export const Landing = () => {
         </motion.div>
       </section>
 
-      {/* Featured tenders */}
+      {/* Featured tenders — same table/card components and bookmark + quick
+          view behaviour as the Tenders page, just no filter bar and capped
+          to 6 rows. */}
       {featuredQuery.data && featuredQuery.data.length > 0 && (
         <motion.section
           initial="hidden"
@@ -272,73 +353,47 @@ export const Landing = () => {
               View all
             </Button>
           </div>
+
           {/* Cards — small/medium screens */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:hidden">
             {featuredQuery.data.map((t, idx) => (
-              <TenderCard key={t.id} t={t} idx={idx} onClick={() => navigate(tenderPath(t))} />
+              <TenderCard
+                key={t.id}
+                t={t}
+                idx={idx}
+                onClick={() => openQuickView(t)}
+                isBookmarked={bookmarks.has(t.id)}
+                onToggleBookmark={(e) => toggleBookmark(t.id, e)}
+              />
             ))}
           </div>
 
           {/* Table — large screens */}
-          <div className="hidden overflow-hidden rounded-lg border border-border bg-card lg:block">
-            <Table className="border-separate border-spacing-0">
-              <TableHeader>
-                <TableRow className="hover:bg-transparent bg-primary">
-                  <TableHead className="h-9 border-b border-border/60 bg-muted/20 px-4 text-[10.5px] font-semibold uppercase tracking-[0.09em] text-white">
-                    Tender
-                  </TableHead>
-                  <TableHead className="h-9 w-[10rem] border-b border-border/60 bg-muted/20 px-4 text-[10.5px] font-semibold uppercase tracking-[0.09em] text-white">
-                    Country
-                  </TableHead>
-                  <TableHead className="h-9 w-[9rem] border-b border-border/60 bg-muted/20 px-4 text-[10.5px] font-semibold uppercase tracking-[0.09em] text-white">
-                    Category
-                  </TableHead>
-                  <TableHead className="h-9 w-[8rem] border-b border-border/60 bg-muted/20 px-4 text-[10.5px] font-semibold uppercase tracking-[0.09em] text-white">
-                    Deadline
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {featuredQuery.data.map((t) => (
-                  <TableRow
-                    key={t.id}
-                    className="cursor-pointer border-b border-border/50 last:border-0"
-                    onClick={() => navigate(tenderPath(t))}
-                  >
-                    <TableCell className="max-w-[28rem] px-4 py-3.5 align-middle">
-                      <div className="min-w-0 space-y-0.5">
-                        <div className="text-[13.5px] font-medium leading-snug text-foreground line-clamp-1">
-                          {displayTitle(t)}
-                        </div>
-                        {t.procuring_entity && (
-                          <div className="text-[11.5px] text-muted-foreground line-clamp-1">
-                            {t.procuring_entity}
-                          </div>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="px-4 py-3.5 align-middle">
-                      <CountryCell country={t.country} countryIso2={t.country_iso2} />
-                    </TableCell>
-                    <TableCell className="px-4 py-3.5 align-middle">
-                      {t.category ? (
-                        <span className="inline-block max-w-[7.5rem] truncate text-[12px] text-foreground/80">
-                          {t.category}
-                        </span>
-                      ) : (
-                        <span className="text-sm text-muted-foreground/40">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap px-4 py-3.5 align-middle">
-                      <DeadlinePill deadline={t.deadline} />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+          <div className="hidden lg:block">
+            <TenderTable
+              tenders={featuredQuery.data}
+              isSelected={(t) => quickViewTender?.id === t.id && quickViewOpen}
+              onRowClick={(t) => openQuickView(t)}
+              leadingAction={(t) => ({ type: "bookmark-toggle", isBookmarked: bookmarks.has(t.id) })}
+              onLeadingAction={(t, e) => toggleBookmark(t.id, e)}
+            />
+          </div>
+
+          {/* Second CTA below the table, in case the one up top gets missed. */}
+          <div className="mt-6 text-center">
+            <Button variant="outline" onClick={() => navigate("/tenders")}>
+              See all tenders
+            </Button>
           </div>
         </motion.section>
       )}
+
+      <TenderQuickView
+        tender={quickViewTender}
+        open={quickViewOpen}
+        onOpenChange={setQuickViewOpen}
+        onTenderChanged={() => queryClient.invalidateQueries({ queryKey: ["landing-featured"] })}
+      />
 
       {/* Value props */}
       <section className=" bg-background">
@@ -446,7 +501,7 @@ export const Landing = () => {
       </section>
 
       {/* Final CTA */}
-      <section className="border-t border-border/60  mt-10 bg-primary">
+      <section className="border-t border-border/60 mt-10 bg-primary dark:bg-gradient-to-br dark:from-blue-950 dark:to-blue-900">
         <motion.div
           initial="hidden"
           whileInView="show"
@@ -459,7 +514,7 @@ export const Landing = () => {
             Create a free account to bookmark tenders, set up alerts and build your own tracked workspace.
           </p>
           <div className="mt-6">
-            <Button size="lg" className="bg-white text-md text-primary hover:bg-mute/30  transition-colors" onClick={() => navigate("/login?mode=signup")}>
+            <Button size="lg" className="bg-white text-md text-primary hover:bg-muted/30 transition-colors" onClick={() => navigate("/login?mode=signup")}>
               Sign up free
             </Button>
 

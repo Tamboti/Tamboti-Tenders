@@ -8,31 +8,16 @@ import { Check } from "@/components/icons";
 import { Seo } from "@/components/seo/Seo";
 import { PaymentSuccessOverlay } from "@/components/billing/PaymentSuccessOverlay";
 import {
-  FREE_ALERT_LIMIT,
-  FREE_BOOKMARK_LIMIT,
-  FREE_VISIBILITY_DAYS,
   PRO_PRICE_USD,
   PRO_PRICE_ANNUAL_TOTAL_USD,
   PRO_PRICE_ANNUAL_MONTHLY_EQUIVALENT_USD,
   PRO_ANNUAL_SAVINGS_PERCENT,
+  FREE_PLAN_FEATURES,
+  PRO_PLAN_FEATURES,
   type BillingInterval,
 } from "@/lib/plan";
 import { cn } from "@/lib/utils";
 import { fadeUp, staggerContainer } from "@/lib/motion";
-
-const FREE_FEATURES = [
-  "Full search & browse of all tenders",
-  `Full detail on tenders closing within ${FREE_VISIBILITY_DAYS} days`,
-  `Up to ${FREE_BOOKMARK_LIMIT} bookmarks`,
-  `${FREE_ALERT_LIMIT} active alert`,
-];
-
-const PRO_FEATURES = [
-  "Full search & browse of all tenders",
-  "Early visibility - see every tender as soon as it's published, no waiting",
-  "Unlimited bookmarks",
-  "Unlimited alerts",
-];
 
 export const Pricing = () => {
   const navigate = useNavigate();
@@ -134,7 +119,7 @@ export const Pricing = () => {
               <span className="text-sm text-muted-foreground">/month</span>
             </div>
             <ul className="mt-6 flex-1 space-y-3">
-              {FREE_FEATURES.map((f) => (
+              {FREE_PLAN_FEATURES.map((f) => (
                 <li key={f} className="flex items-center gap-3 text-sm text-foreground/85">
                   <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
                     <Check className="h-3.5 w-3.5" />
@@ -180,7 +165,7 @@ export const Pricing = () => {
                 : "Billed monthly"}
             </p>
             <ul className="mt-6 flex-1 space-y-3">
-              {PRO_FEATURES.map((f) => (
+              {PRO_PLAN_FEATURES.map((f) => (
                 <li key={f} className="flex items-center gap-3 text-sm text-primary-foreground/90">
                   <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary-foreground/15 text-primary-foreground">
                     <Check className="h-3.5 w-3.5" />

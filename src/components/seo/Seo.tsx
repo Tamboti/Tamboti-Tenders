@@ -2,7 +2,7 @@ import { Helmet } from "react-helmet-async";
 import { LOGO_URL, SITE_NAME } from "@/lib/brand";
 
 const DEFAULT_DESCRIPTION =
-  "Search, track, and get alerted on procurement tenders across Africa. Free to browse — no account required.";
+  "Search, track, and get alerted on procurement tenders across Africa. Free to browse - no account required.";
 const DEFAULT_IMAGE = LOGO_URL;
 
 export const Seo = ({

@@ -1,13 +1,15 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import { useSubscription, useBillingActions, usePaymentHistory, useCheckoutRedirectResult } from "@/hooks/use-subscription";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PaymentSuccessOverlay } from "@/components/billing/PaymentSuccessOverlay";
 import { AlertTriangle, Calendar, Check, ExternalLink } from "@/components/icons";
 import { formatCurrency, formatDate } from "@/lib/format";
-import { PRO_PRICE_USD } from "@/lib/plan";
+import { PRO_PRICE_USD, FREE_PLAN_FEATURES, PRO_PLAN_FEATURES } from "@/lib/plan";
 import { cn } from "@/lib/utils";
+import { fadeUp, staggerContainer } from "@/lib/motion";
 
 const STATUS_LABEL: Record<string, string> = {
   active: "Pro",
@@ -26,9 +28,6 @@ const STATUS_DOT: Record<string, string> = {
   canceled: "bg-muted-foreground/40",
   inactive: "bg-muted-foreground/40",
 };
-
-const FREE_FEATURES = ["5 saved bookmarks", "1 tender alert", "Standard search"];
-const PRO_FEATURES = ["Unlimited bookmarks", "Unlimited alerts", "Early visibility on new tenders", "Priority support"];
 
 // ─── Shared bits ────────────────────────────────────────────────────────────
 
@@ -86,7 +85,7 @@ export default function Billing() {
         <div className="mb-8 flex items-start gap-3 border-l-2 border-destructive pl-4 py-1 text-sm text-destructive">
           <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
           <span>
-            Your last payment failed. Update your payment method to keep your Pro features — your
+            Your last payment failed. Update your payment method to keep your Pro features - your
             subscription may be canceled otherwise.
           </span>
         </div>
@@ -135,53 +134,75 @@ export default function Billing() {
         )}
       </div>
 
-      {/* Plans */}
+      {/* Plans — same card treatment as the Pricing page's Free/Pro cards */}
       {!isAdmin && !isPro && (
         <div className="border-b border-border py-8">
           <Eyebrow>Plans</Eyebrow>
 
-          <div className="mt-6 grid divide-y divide-border sm:grid-cols-2 sm:divide-x sm:divide-y-0">
-            <div className="pb-6 sm:pb-0 sm:pr-8">
-              <p className="text-sm font-medium text-foreground">Free</p>
-              <p className="mt-2 text-4xl font-semibold tracking-tight tabular-nums text-foreground">$0</p>
-              <ul className="mt-5 space-y-2.5">
-                {FREE_FEATURES.map((f) => (
-                  <li key={f} className="flex items-start gap-2 text-sm text-muted-foreground">
-                    <Check className="h-4 w-4 mt-0.5 shrink-0" />
-                    {f}
+          <motion.div
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true, amount: 0.2 }}
+            variants={staggerContainer}
+            className="mt-6 grid gap-6 md:grid-cols-2"
+          >
+            {/* Free */}
+            <motion.div variants={fadeUp} className="flex flex-col rounded-2xl border border-border bg-card p-6 shadow-sm">
+              <h2 className="text-lg font-semibold text-foreground">Free</h2>
+              <p className="mt-1 text-sm text-muted-foreground">For your first few bids</p>
+              <div className="mt-4 flex items-baseline gap-1">
+                <span className="text-4xl font-semibold tabular-nums text-foreground">$0</span>
+                <span className="text-sm text-muted-foreground">/month</span>
+              </div>
+              <ul className="mt-6 flex-1 space-y-3">
+                {FREE_PLAN_FEATURES.map((f) => (
+                  <li key={f} className="flex items-center gap-3 text-sm text-foreground/85">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                      <Check className="h-3.5 w-3.5" />
+                    </span>
+                    <span>{f}</span>
                   </li>
                 ))}
               </ul>
-            </div>
+              <Button variant="outline" size="lg" className="mt-8" disabled>
+                You're on Free
+              </Button>
+            </motion.div>
 
-            <div className="pt-6 sm:pt-0 sm:pl-8">
+            {/* Pro */}
+            <motion.div variants={fadeUp} className="relative flex flex-col rounded-2xl bg-primary p-6 shadow-lg">
               <div className="flex items-center gap-2">
-                <p className="text-sm font-medium text-foreground">Pro</p>
-                <span className="text-[10px] font-medium uppercase tracking-[0.1em] text-primary">
-                  Recommended
+                <h2 className="text-lg font-semibold text-primary-foreground">Pro</h2>
+                <span className="rounded-full bg-primary-foreground/15 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-primary-foreground">
+                  🔥Popular
                 </span>
               </div>
-              <p className="mt-2 text-4xl font-semibold tracking-tight tabular-nums text-foreground">
-                ${PRO_PRICE_USD}
-                <span className="text-base font-normal text-muted-foreground">/month</span>
-              </p>
-              <ul className="mt-5 space-y-2.5">
-                {PRO_FEATURES.map((f) => (
-                  <li key={f} className="flex items-start gap-2 text-sm text-foreground">
-                    <Check className="h-4 w-4 mt-0.5 shrink-0 text-primary" />
-                    {f}
+              <p className="mt-1 text-sm text-primary-foreground/70">For individual bidders & consultants</p>
+              <div className="mt-4 flex items-baseline gap-1">
+                <span className="text-4xl font-semibold tabular-nums text-primary-foreground">${PRO_PRICE_USD}</span>
+                <span className="text-sm text-primary-foreground/70">/user/month</span>
+              </div>
+              <p className="mt-1 text-xs text-primary-foreground/70">Billed monthly</p>
+              <ul className="mt-6 flex-1 space-y-3">
+                {PRO_PLAN_FEATURES.map((f) => (
+                  <li key={f} className="flex items-center gap-3 text-sm text-primary-foreground/90">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary-foreground/15 text-primary-foreground">
+                      <Check className="h-3.5 w-3.5" />
+                    </span>
+                    <span>{f}</span>
                   </li>
                 ))}
               </ul>
               <Button
-                className="mt-6 w-full sm:w-auto"
+                size="lg"
+                className="mt-8 bg-white text-primary hover:bg-white/90"
                 disabled={checkoutBusy}
                 onClick={() => void startCheckout("monthly", "/portal/billing")}
               >
                 {checkoutBusy ? "Redirecting…" : "Upgrade to Pro"}
               </Button>
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
         </div>
       )}
 

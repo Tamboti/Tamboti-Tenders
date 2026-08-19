@@ -103,13 +103,12 @@ const daysLeftLabel = (deadline: string | null) => {
   return `${d}d left`;
 };
 
-// Badge color escalates with urgency stage so reminders are visually
-// distinct from a first-time match without needing extra copy.
-const badgeStyle = (stage: number) => {
-  if (stage === 2) return "background:#FCEBEB;color:#791F1F;";
-  if (stage === 1) return "background:#FAEEDA;color:#854F0B;";
-  return "color:#0056D2;";
-};
+// Left accent bar + deadline-pill colors, indexed by urgency stage
+// (0 = normal, 1 = closing within 7 days, 2 = closing within 2 days).
+const STAGE_BAR = ["#d8dee8", "#E3A324", "#D64545"];
+const STAGE_BADGE_BG = ["#eef1f6", "#FAEEDA", "#FCEBEB"];
+const STAGE_BADGE_TEXT = ["#4b5563", "#8a5a12", "#a12626"];
+const STAGE_BADGE_WEIGHT = [600, 700, 700];
 
 // Mirrors src/lib/slug.ts — kept in sync by hand since Deno functions can't
 // import from src/.
@@ -133,69 +132,214 @@ const escapeHtml = (value: string) =>
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 
+// One tender's row inside the card, plus the hairline divider that follows
+// it (skipped after the last row — see the bottom-padding bump there too).
+const tenderRow = (t: MatchedTender, href: string, isLast: boolean) => {
+  const title = escapeHtml(truncate(t.title, 100));
+  const meta = [t.procuring_entity, t.country]
+    .filter((v): v is string => Boolean(v))
+    .map(escapeHtml)
+    .join(" &nbsp;&middot;&nbsp; ");
+  const days = daysLeftLabel(t.deadline);
+  const stage = t.targetStage >= 0 && t.targetStage <= 2 ? t.targetStage : 0;
+  const bar = STAGE_BAR[stage];
+  const badgeBg = STAGE_BADGE_BG[stage];
+  const badgeText = STAGE_BADGE_TEXT[stage];
+  const badgeWeight = STAGE_BADGE_WEIGHT[stage];
+  const bottomPad = isLast ? 32 : 24;
+
+  return `
+<tr>
+<td class="px" style="padding:24px 32px ${bottomPad}px 32px;">
+<a href="${href}" style="text-decoration:none; display:block;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr>
+<td width="4" bgcolor="${bar}" style="background-color:${bar}; border-radius:3px; font-size:0; line-height:0;">&nbsp;</td>
+<td width="16" style="font-size:0; line-height:0;">&nbsp;</td>
+<td valign="top">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+${t.isReminder ? `<tr><td><table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:6px;"><tr><td bgcolor="#eef1f6" style="background-color:#eef1f6; border-radius:4px; padding:2px 7px;"><span style="font-family:Inter,-apple-system,'Segoe UI',Arial,sans-serif; font-size:10.5px; font-weight:700; letter-spacing:0.05em; color:#6b7280; text-transform:uppercase;">Updated</span></td></tr></table></td></tr>` : ""}
+<tr>
+<td>
+<p class="titleclamp text-main" style="margin:0 0 4px 0; font-family:Inter,-apple-system,'Segoe UI',Arial,sans-serif; font-size:16px; line-height:22px; font-weight:600; color:#0f172a;">
+${title}
+</p>
+${meta ? `<p class="text-sub" style="margin:0; font-family:Inter,-apple-system,'Segoe UI',Arial,sans-serif; font-size:13px; line-height:19px; color:#6b7280;">${meta}</p>` : ""}
+</td>
+</tr>
+${days ? `<tr><td style="padding-top:6px; line-height:0;"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td bgcolor="${badgeBg}" style="background-color:${badgeBg}; border-radius:20px; padding:5px 12px; line-height:16px;"><span style="font-family:Inter,-apple-system,'Segoe UI',Arial,sans-serif; font-size:12px; font-weight:${badgeWeight}; color:${badgeText};">${days}</span></td></tr></table></td></tr>` : ""}
+</table>
+</td>
+<td width="16" style="font-size:0; line-height:0;">&nbsp;</td>
+<td width="14" valign="top" align="right" style="padding-top:2px;">
+<span style="font-family:Georgia,serif; font-size:18px; color:#c3c9d2;">&rsaquo;</span>
+</td>
+</tr>
+</table>
+</a>
+</td>
+</tr>${!isLast ? `
+<tr><td style="padding:0 32px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="border-top:1px solid #eef0f3; font-size:0; line-height:0;">&nbsp;</td></tr></table></td></tr>` : ""}`;
+};
+
 const buildHtml = (rows: MatchedTender[], pref: AlertPreference) => {
   const base = APP_URL.replace(/\/$/, "");
-  const matchLabel = normalizeList(pref.categories).join(" and ") ||
-    normalizeList(pref.countries).join(", ") ||
-    "your alert";
+  const matchLabel = normalizeList(pref.categories).join(", ") || normalizeList(pref.countries).join(", ") || null;
+  const subLine = matchLabel
+    ? `Matching your alert for <strong style="color:#374151;">${escapeHtml(matchLabel)}</strong>`
+    : "Matching your saved alert";
+  const heading = buildSubject(rows.length);
 
-  const cards = rows
-    .map((t) => {
-      const href = tenderHref(base, t);
-      const title = escapeHtml(truncate(t.title, 60));
-      const metaParts = [t.procuring_entity, t.country].filter(Boolean);
-      if (t.isReminder) metaParts.push("Reminder — still open");
-      const meta = metaParts.join(" &middot; ");
-      const days = daysLeftLabel(t.deadline);
-      const badge = badgeStyle(t.targetStage);
-      return `<a href="${href}" style="display:block;text-decoration:none;border:0.5px solid #eceef1;border-radius:10px;padding:14px 16px;margin-bottom:10px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
-          <div style="font-weight:500;font-size:14px;color:#111318;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${title}</div>
-          ${days ? `<div style="flex-shrink:0;font-size:11.5px;font-weight:500;padding:3px 8px;border-radius:20px;${badge}">${days}</div>` : ""}
-        </div>
-        ${meta ? `<div style="margin-top:4px;font-size:12.5px;color:#9199a6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(meta)}</div>` : ""}
-      </a>`;
-    })
-    .join("");
+  const closingCount = rows.filter((t) => t.targetStage >= 1).length;
+  const preheader = escapeHtml(
+    `${buildSubject(rows.length)}.${closingCount > 0 ? ` ${closingCount} closing within days.` : ""}${matchLabel ? ` ${matchLabel}.` : ""}`
+  );
 
   const manageUrl = `${base}/alerts/${pref.id}`;
   const unsubscribeUrl = `${base}/alerts/${pref.id}/unsubscribe`;
 
-  return `
-  <div style="font-family:Inter,-apple-system,Segoe UI,sans-serif;background:#ffffff;max-width:520px;margin:0 auto;">
-    <div style="padding:28px 28px 0;">
-      <div style="display:flex;align-items:center;gap:8px;">
-        <img src="https://gdbodrzxdbtskyzmqmuu.supabase.co/storage/v1/object/public/Company%20assets/d7d592e6-4c11-47a1-888d-f2c924958a69-removebg-preview.png" alt="Tamboti Tenders" width="24" height="24" style="height:24px;width:24px;max-width:24px;display:block;border:0;outline:none;" />
-        <span style="font-size:14px;font-weight:600;color:#111318;letter-spacing:-0.01em;">Tamboti Tenders</span>
-      </div>
-    </div>
+  const rowsHtml = rows.map((t, i) => tenderRow(t, tenderHref(base, t), i === rows.length - 1)).join("");
 
-    <div style="padding:20px 28px 4px;">
-      <div style="font-size:19px;font-weight:600;color:#111318;letter-spacing:-0.01em;">${rows.length} ${rows.length === 1 ? "tender" : "tenders"}</div>
-      <div style="margin-top:4px;font-size:14px;color:#6b7280;">${escapeHtml(matchLabel)}</div>
-    </div>
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
+<title>Tender Alert - Tamboti Tenders</title>
+<!--[if mso]>
+<noscript>
+<xml>
+<o:OfficeDocumentSettings>
+<o:PixelsPerInch>96</o:PixelsPerInch>
+</o:OfficeDocumentSettings>
+</xml>
+</noscript>
+<![endif]-->
+<style>
+  body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+  table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+  img { -ms-interpolation-mode: bicubic; border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; }
+  body { margin: 0; padding: 0; width: 100% !important; height: 100% !important; }
+  a { text-decoration: none; }
+  .titleclamp { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+  @media only screen and (max-width: 600px) {
+    .container { width: 100% !important; }
+    .stack { display: block !important; width: 100% !important; }
+    .px { padding-left: 20px !important; padding-right: 20px !important; }
+  }
+</style>
+</head>
+<body class="bg-outer" style="margin:0; padding:0; background-color:#ffffff; font-family:Inter,-apple-system,'Segoe UI',Arial,sans-serif;">
+<div style="display:none; max-height:0; overflow:hidden; mso-hide:all; font-size:1px; line-height:1px; color:#ffffff; opacity:0;">
+${preheader}&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;
+</div>
 
-    <div style="padding:16px 28px 8px;">
-      ${cards}
-    </div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="bg-outer" style="background-color:#ffffff;">
+<tr>
+<td align="center" style="padding:32px 16px;">
 
-    <div style="padding:12px 28px 28px;">
-      <a href="${base}/tenders" style="display:block;text-align:center;background:#0056D2;color:#ffffff;font-size:14px;font-weight:500;padding:12px;border-radius:8px;text-decoration:none;">View all matches</a>
-    </div>
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" class="container" style="width:600px; max-width:600px;">
 
-    <div style="border-top:0.5px solid #eceef1;padding:16px 28px;font-size:11.5px;color:#9199a6;line-height:1.6;">
-      Sent by Tamboti Tenders &middot;
-      <a href="${manageUrl}" style="color:#6b7280;text-decoration:none;">Manage alerts</a> &middot;
-      <a href="${unsubscribeUrl}" style="color:#6b7280;text-decoration:none;">Unsubscribe</a>
-    </div>
-  </div>`;
+<!-- Header -->
+<tr>
+<td class="px" style="padding:0 8px 24px 8px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr>
+<td align="left" valign="middle">
+<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+<td valign="middle" style="padding-right:10px;">
+<img src="https://gdbodrzxdbtskyzmqmuu.supabase.co/storage/v1/object/public/Company%20assets/d7d592e6-4c11-47a1-888d-f2c924958a69-removebg-preview.png" width="46" alt="Tamboti Tenders" style="display:block; width:46px; max-width:46px; height:auto;">
+</td>
+<td valign="middle">
+<span style="font-family:Georgia,'Times New Roman',serif; font-size:17px; font-weight:400; color:#0f172a;">Tamboti Tenders</span>
+</td>
+</tr></table>
+</td>
+<td align="right" valign="middle">
+<span class="text-sub" style="font-family:Inter,-apple-system,'Segoe UI',Arial,sans-serif; font-size:12px; color:#6b7280; letter-spacing:0.06em; text-transform:uppercase;">Tender Alert</span>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+
+<!-- Card wrapper -->
+<tr>
+<td>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="bg-card" style="background-color:#ffffff; border:1px solid #e5e9f0; border-radius:16px;">
+
+<!-- Intro -->
+<tr>
+<td class="px" style="padding:32px 32px 8px 32px;">
+<p class="text-main" style="margin:0; font-family:Georgia,'Times New Roman',serif; font-size:24px; line-height:31px; font-weight:400; color:#0f172a;">
+${heading}
+</p>
+</td>
+</tr>
+<tr>
+<td class="px" style="padding:0 32px 24px 32px;">
+<p class="text-sub" style="margin:0; font-family:Inter,-apple-system,'Segoe UI',Arial,sans-serif; font-size:14px; line-height:21px; color:#6b7280;">
+${subLine}
+</p>
+</td>
+</tr>
+
+<!-- divider -->
+<tr>
+<td style="padding:0 32px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="border-top:1px solid #eef0f3; font-size:0; line-height:0;">&nbsp;</td></tr></table>
+</td>
+</tr>
+${rowsHtml}
+
+</table>
+</td>
+</tr>
+
+<!-- CTA -->
+<tr>
+<td align="center" style="padding:32px 8px 8px 8px;">
+<table role="presentation" cellpadding="0" cellspacing="0" border="0">
+<tr>
+<td align="center" bgcolor="#0056D2" style="background-color:#0056D2; border-radius:10px;">
+<a href="${base}/tenders" style="display:block; padding:14px 32px; font-family:Inter,-apple-system,'Segoe UI',Arial,sans-serif; font-size:15px; font-weight:600; color:#ffffff;">View all matches</a>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+
+<!-- Footer -->
+<tr>
+<td align="center" style="padding:32px 24px 8px 24px;">
+<p style="margin:0 0 12px 0; font-family:Inter,-apple-system,'Segoe UI',Arial,sans-serif; font-size:12px; line-height:18px; color:#98a1b0;">
+<a href="${manageUrl}" style="color:#6b7280; text-decoration:underline;">Manage alerts</a>
+&nbsp;&nbsp;&middot;&nbsp;&nbsp;
+<a href="${unsubscribeUrl}" style="color:#6b7280; text-decoration:underline;">Unsubscribe</a>
+</p>
+<p style="margin:0; font-family:Inter,-apple-system,'Segoe UI',Arial,sans-serif; font-size:11px; line-height:17px; color:#b3b9c4;">
+Tamboti Tenders &nbsp;&middot;&nbsp; 14 Samora Machel Ave, Harare, Zimbabwe<br>
+You're receiving this because you saved a tender alert.
+</p>
+</td>
+</tr>
+
+</table>
+</td>
+</tr>
+</table>
+
+</body>
+</html>`;
 };
 
 const buildText = (rows: MatchedTender[], pref: AlertPreference) => {
   const base = APP_URL.replace(/\/$/, "");
   const lines = rows.map((t) =>
     [
-      `- ${t.title}${t.isReminder ? " (reminder, still open)" : ""}`,
+      `- ${t.title}${t.isReminder ? " (updated)" : ""}`,
       t.country ? `  Country: ${t.country}` : null,
       t.category ? `  Category: ${t.category}` : null,
       t.deadline ? `  Deadline: ${new Date(t.deadline).toLocaleDateString()}` : null,

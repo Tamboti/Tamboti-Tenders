@@ -460,7 +460,7 @@ const Tenders = () => {
   const openQuickView = (t: Tender) => {
     if (!isPro && !isWithinFreeVisibilityWindow(t.deadline)) {
       toast.error(
-        `This tender closes in more than ${FREE_VISIBILITY_DAYS} days — upgrade to Pro to view it now.`,
+        `This tender closes in more than ${FREE_VISIBILITY_DAYS} days - upgrade to Pro to view it now.`,
         { action: { label: "Upgrade", onClick: () => navigate("/pricing") } }
       );
       return;
@@ -756,7 +756,7 @@ const Tenders = () => {
         .from("tender_bookmarks").insert({ user_id: uid, tender_id: tenderId });
       if (error) {
         if (isPlanLimitError(error)) {
-          toast.error("Free plan limit reached — up to 5 bookmarks. Upgrade to Pro for unlimited.", {
+          toast.error("Free plan limit reached - up to 5 bookmarks. Upgrade to Pro for unlimited.", {
             action: { label: "Upgrade", onClick: () => navigate("/pricing") },
           });
           return;

@@ -1,5 +1,5 @@
 import { FormEvent, useState } from "react";
-import { Navigate, NavLink, useLocation, useSearchParams } from "react-router-dom";
+import { Link, Navigate, NavLink, useLocation, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserRole } from "@/hooks/use-user-role";
@@ -223,6 +223,22 @@ const Login = () => {
               ? mode === "signin" ? "Signing in…" : "Creating account…"
               : mode === "signin" ? "Sign in" : "Create account"}
           </button>
+
+          {/* No separate checkbox — creating an account is itself the
+              agreement, this is just making that explicit. */}
+          {mode === "signup" && (
+            <p className="text-center text-[12.5px] leading-relaxed text-muted-foreground">
+              By creating an account, you agree to our{" "}
+              <Link to="/terms" className="text-foreground underline underline-offset-2 hover:text-primary">
+                Terms of Service
+              </Link>{" "}
+              and{" "}
+              <Link to="/privacy" className="text-foreground underline underline-offset-2 hover:text-primary">
+                Privacy Policy
+              </Link>
+              .
+            </p>
+          )}
         </form>
 
         <div className="mt-8  text-center">

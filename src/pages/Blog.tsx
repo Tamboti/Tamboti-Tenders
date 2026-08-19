@@ -8,7 +8,6 @@ import { Seo } from "@/components/seo/Seo";
 import { cn } from "@/lib/utils";
 import { POST_CATEGORIES } from "@/lib/blogCategories";
 import { fadeUp, staggerContainer } from "@/lib/motion";
-import { formatDate } from "@/lib/format";
 
 type PostSummary = {
   slug: string;
@@ -18,50 +17,6 @@ type PostSummary = {
   category: string;
   published_at: string | null;
 };
-
-/* ── Post card — same thin, bordered shell as TenderCard (see
-   src/components/tender/TenderCard.tsx) for visual consistency between
-   the two list-style pages. ── */
-const PostCard = ({ post, onClick }: { post: PostSummary; onClick: () => void }) => (
-  <motion.div
-    variants={fadeUp}
-    className="relative rounded-lg border border-border/70 bg-card p-4 shadow-sm cursor-pointer active:bg-muted/30 active:scale-[0.99] transition-all"
-    onClick={onClick}
-    role="button"
-    tabIndex={0}
-    onKeyDown={(e) => {
-      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); }
-    }}
-  >
-    <div className="flex items-start gap-3">
-      {post.cover_image_url && (
-        <div className="h-16 w-16 shrink-0 overflow-hidden rounded-md bg-muted">
-          <img src={post.cover_image_url} alt="" className="h-full w-full object-cover" />
-        </div>
-      )}
-      <div className="min-w-0 flex-1 space-y-1.5">
-        <p className="text-[13px] font-semibold leading-snug text-foreground line-clamp-2">
-          {post.title}
-        </p>
-
-        <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-          <span className="inline-flex max-w-[9rem] rounded-full border border-border/70 bg-muted/35 px-2 py-0.5 text-[11px] font-semibold leading-none text-muted-foreground">
-            <span className="truncate">{post.category}</span>
-          </span>
-          {post.published_at && (
-            <span className="text-[11px] text-muted-foreground tabular-nums">
-              {formatDate(post.published_at)}
-            </span>
-          )}
-        </div>
-
-        {post.excerpt && (
-          <p className="text-[11px] text-muted-foreground/75 line-clamp-2 mt-1">{post.excerpt}</p>
-        )}
-      </div>
-    </div>
-  </motion.div>
-);
 
 const Blog = () => {
   const navigate = useNavigate();
@@ -133,9 +88,13 @@ const Blog = () => {
       {/* Grid */}
       <div className="mx-auto max-w-6xl px-4 pb-16 sm:px-6 lg:px-8">
         {postsQuery.isLoading ? (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="h-[92px] animate-pulse rounded-lg border border-border/70 bg-muted/40" />
+              <div key={i} className="space-y-3">
+                <div className="aspect-[4/3] animate-pulse rounded-xl bg-muted/60" />
+                <div className="h-3 w-1/3 animate-pulse rounded bg-muted/60" />
+                <div className="h-5 w-4/5 animate-pulse rounded bg-muted/60" />
+              </div>
             ))}
           </div>
         ) : filtered.length > 0 ? (
@@ -144,16 +103,43 @@ const Blog = () => {
             whileInView="show"
             viewport={{ once: true, amount: 0.1 }}
             variants={staggerContainer}
-            className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"
+            className="grid grid-cols-1 gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-3"
           >
             {filtered.map((post) => (
-              <PostCard key={post.slug} post={post} onClick={() => navigate(`/blog/${post.slug}`)} />
+              <motion.button
+                key={post.slug}
+                variants={fadeUp}
+                type="button"
+                onClick={() => navigate(`/blog/${post.slug}`)}
+                className="group flex flex-col text-left"
+              >
+                <div className="aspect-[4/3] w-full overflow-hidden rounded-xl bg-muted">
+                  {post.cover_image_url ? (
+                    <img
+                      src={post.cover_image_url}
+                      alt=""
+                      className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-[1.03]"
+                    />
+                  ) : (
+                    <div className="h-full w-full bg-gradient-to-br from-muted to-muted/50" />
+                  )}
+                </div>
+                <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-primary">
+                  {post.category}
+                </p>
+                <h2 className="mt-1 text-lg font-bold leading-snug text-foreground line-clamp-2 group-hover:underline">
+                  {post.title}
+                </h2>
+                {post.excerpt && (
+                  <p className="mt-1.5 text-sm text-muted-foreground line-clamp-2">{post.excerpt}</p>
+                )}
+              </motion.button>
             ))}
           </motion.div>
         ) : (
           <p className="py-16 text-center text-sm text-muted-foreground">
             {activeCategory === "All"
-              ? "No posts published yet — check back soon."
+              ? "No posts published yet - check back soon."
               : `No posts in "${activeCategory}" yet.`}
           </p>
         )}

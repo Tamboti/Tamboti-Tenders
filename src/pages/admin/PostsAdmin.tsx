@@ -188,7 +188,7 @@ export default function PostsAdmin() {
       }>("generate-blog-post", { body: {} });
       if (error) throw error;
       if (!data?.post?.id) throw new Error(data?.error ?? "No post returned");
-      toast.success("Draft generated — review it in the table below");
+      toast.success("Draft generated - review it in the table below");
       await invalidatePosts();
     } catch (e) {
       toast.error("Generation failed", { description: e instanceof Error ? e.message : "Unknown error" });
@@ -231,7 +231,7 @@ export default function PostsAdmin() {
       toast.error(handleDbError(error));
       return;
     }
-    toast.success(scheduleDraft ? `Scheduled for ${formatDateTime(scheduleDraft)}` : "Removed from schedule — back to draft");
+    toast.success(scheduleDraft ? `Scheduled for ${formatDateTime(scheduleDraft)}` : "Removed from schedule - back to draft");
     setSchedulingTarget(null);
     invalidatePosts();
   };
@@ -514,7 +514,7 @@ export default function PostsAdmin() {
           <p className="text-xs text-muted-foreground">
             {scheduleDraft
               ? `Publishes automatically ${formatDateTime(scheduleDraft)}.`
-              : "No date picked — saving now will send this back to a draft."}
+              : "No date picked - saving now will send this back to a draft."}
           </p>
           <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:gap-0">
             <Button variant="outline" size="sm" className="w-full sm:w-auto" disabled={scheduling} onClick={() => setSchedulingTarget(null)}>

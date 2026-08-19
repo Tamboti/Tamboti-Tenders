@@ -167,7 +167,7 @@ export const TenderDetail = ({
         setSummaryError(
           httpStatus === 422
             ? "Summary not ready yet, try again shortly."
-            : "Couldn't load this translation right now — showing the English summary."
+            : "Couldn't load this translation right now - showing the English summary."
         );
         return;
       }
@@ -245,7 +245,7 @@ export const TenderDetail = ({
       setBookmarkBusy(false);
       if (error) {
         if (isPlanLimitError(error)) {
-          toast.error("Free plan limit reached — up to 5 bookmarks. Upgrade to Pro for unlimited.", {
+          toast.error("Free plan limit reached - up to 5 bookmarks. Upgrade to Pro for unlimited.", {
             action: { label: "Upgrade", onClick: () => navigate("/pricing") },
           });
           return;
@@ -348,19 +348,35 @@ export const TenderDetail = ({
           way of the title/reading content below ── */}
       <div className="flex flex-wrap items-center justify-end gap-3">
         <div className="flex shrink-0 items-center gap-2">
-          {/* Gated the same as the summary/description below — otherwise a
-              free user could skip the paywall entirely via the original
-              posting. */}
-          {!gated && tender.source_url && tender.source !== "tanzania" && (
-            <a
-              href={tender.source_url}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center text-sm text-blue-600 hover:text-blue-800 hover:underline"
-            >
-              <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
-              View source
-            </a>
+          {/* Always visible now — previously hidden outright while gated,
+              which just looked like the link was missing. Free users see it
+              but clicking prompts an upgrade instead of opening the source
+              (still can't skip the paywall via the original posting). */}
+          {tender.source_url && tender.source !== "tanzania" && (
+            gated ? (
+              <button
+                type="button"
+                onClick={() =>
+                  toast.error("Upgrade to Pro to view the original source.", {
+                    action: { label: "Upgrade", onClick: () => navigate("/pricing") },
+                  })
+                }
+                className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
+              >
+                <Lock className="mr-1.5 h-3.5 w-3.5" />
+                View source
+              </button>
+            ) : (
+              <a
+                href={tender.source_url}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center text-sm text-blue-600 hover:text-blue-800 hover:underline"
+              >
+                <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
+                View source
+              </a>
+            )
           )}
           <Button
             type="button"
@@ -430,12 +446,12 @@ export const TenderDetail = ({
 
         {showFailedNote && (
           <p className="text-[12px] text-muted-foreground">
-            English translation could not be generated — showing the original ({getLanguageName(tender.source_language)}).
+            English translation could not be generated - showing the original ({getLanguageName(tender.source_language)}).
           </p>
         )}
         {showPendingNote && (
           <p className="text-[12px] text-muted-foreground">
-            English translation is still pending — showing the original ({getLanguageName(tender.source_language)}).
+            English translation is still pending - showing the original ({getLanguageName(tender.source_language)}).
           </p>
         )}
       </div>
@@ -461,7 +477,7 @@ export const TenderDetail = ({
             </p>
             <p className="mt-1 max-w-sm text-[13px] text-muted-foreground">
               This tender closes in more than {FREE_VISIBILITY_DAYS} days. Free accounts see full
-              detail once it's within that window — Pro sees every tender the moment it's published.
+              detail once it's within that window - Pro sees every tender the moment it's published.
             </p>
           </div>
           <Button size="sm" onClick={() => navigate("/pricing")}>
