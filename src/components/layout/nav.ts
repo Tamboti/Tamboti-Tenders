@@ -1,5 +1,5 @@
 import type React from "react";
-import { Globe, Pencil, Search, Bookmark, Bell, TrendingUp, CreditCard } from "lucide-react";
+import { Globe, Pencil, Search, Bookmark, Bell, TrendingUp, CreditCard, Users } from "lucide-react";
 
 export type NavItem = {
   to: string;
@@ -34,7 +34,10 @@ export const NAV_SECTIONS: NavSection[] = [
   },
   {
     heading: "Insights",
-    items: [{ to: "/admin/analytics", label: "Analytics", icon: TrendingUp, adminOnly: true }],
+    items: [
+      { to: "/admin/analytics", label: "Analytics", icon: TrendingUp, adminOnly: true },
+      { to: "/admin/users", label: "Users", icon: Users, adminOnly: true },
+    ],
   },
   { heading: "Scrapers", items: [{ to: "/admin/sources", label: "Sources", icon: Globe, adminOnly: true }] },
   { heading: "Content", items: [{ to: "/admin/posts", label: "Blog", icon: Pencil, adminOnly: true }] },

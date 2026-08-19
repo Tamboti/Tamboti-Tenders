@@ -1,12 +1,13 @@
 // Background enrichment worker.
 // Picks pending tenders, fetches detail pages (source-specific),
-// runs an AI summary via Lovable AI Gateway, and updates the row.
+// runs an AI summary via the Gemini API directly, and updates the row.
 //
 // Invoke with optional body: { batchSize?: number, source?: "zambia" | "tanzania" | "undp" }
 
 import * as cheerio from "https://esm.sh/cheerio@1.0.0-rc.12";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { requireAdmin } from "../_shared/requireAdmin.ts";
+import { HttpError, reportExternalServiceError } from "../_shared/notifyAdmin.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -17,7 +18,8 @@ const corsHeaders = {
 
 const CONFIG = {
   scrapeDoToken: Deno.env.get("SCRAPE_DO_TOKEN") ?? "",
-  lovableApiKey: Deno.env.get("LOVABLE_API_KEY") ?? "",
+  geminiApiKey: Deno.env.get("GEMINI_API_KEY") ?? "",
+  geminiModel: Deno.env.get("GEMINI_MODEL") ?? "gemini-2.0-flash",
   nestUsername: Deno.env.get("NEST_USERNAME") ?? "",
   nestPassword: Deno.env.get("NEST_PASSWORD") ?? "",
   defaultBatchSize: 10,
@@ -46,7 +48,10 @@ async function fetchViaProxy(url: string): Promise<string> {
   const timer = setTimeout(() => controller.abort(), CONFIG.requestTimeoutMs);
   try {
     const res = await fetch(proxyUrl, { signal: controller.signal });
-    if (!res.ok) throw new Error(`HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`);
+    if (!res.ok) {
+      const body = await res.text();
+      throw new HttpError(res.status, `HTTP ${res.status}: ${body.slice(0, 200)}`);
+    }
     return await res.text();
   } finally {
     clearTimeout(timer);
@@ -213,9 +218,14 @@ async function enrichTanzania(rawData: any): Promise<DetailUpdate> {
 }
 
 // ──────────────── AI summary ────────────────
-async function aiSummarize(title: string, description: string | null, country: string | null): Promise<string | null> {
-  if (!CONFIG.lovableApiKey) {
-    log.warn("LOVABLE_API_KEY not set, skipping AI summary");
+async function aiSummarize(
+  service: ReturnType<typeof createClient>,
+  title: string,
+  description: string | null,
+  country: string | null,
+): Promise<string | null> {
+  if (!CONFIG.geminiApiKey) {
+    log.warn("GEMINI_API_KEY not set, skipping AI summary");
     return null;
   }
   const content = [
@@ -223,33 +233,37 @@ async function aiSummarize(title: string, description: string | null, country: s
     `Title: ${title}`,
     `Description: ${description ?? "(no description provided)"}`,
   ].join("\n");
+  const systemPrompt =
+    "You are a procurement analyst. Summarize tenders in 2-3 plain-English sentences. Highlight the scope, what is being procured, and any notable requirements. No marketing language.";
 
   try {
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${CONFIG.lovableApiKey}`,
-        "Content-Type": "application/json",
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${CONFIG.geminiModel}:generateContent?key=${CONFIG.geminiApiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: systemPrompt }] },
+          contents: [{ role: "user", parts: [{ text: content }] }],
+          generationConfig: { temperature: 0.3, maxOutputTokens: 400 },
+        }),
       },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [
-          {
-            role: "system",
-            content:
-              "You are a procurement analyst. Summarize tenders in 2-3 plain-English sentences. Highlight the scope, what is being procured, and any notable requirements. No marketing language.",
-          },
-          { role: "user", content },
-        ],
-      }),
-    });
+    );
     if (!res.ok) {
       const txt = await res.text();
-      log.warn("AI gateway error", { status: res.status, body: txt.slice(0, 200) });
+      const message = await reportExternalServiceError(service, {
+        key: "ai_credits",
+        service: "Gemini",
+        context: "Tender enrichment summaries (enrich-tenders)",
+        error: new HttpError(res.status, `HTTP ${res.status}: ${txt.slice(0, 200)}`),
+      });
+      log.warn("Gemini error", { status: res.status, body: message });
       return null;
     }
     const json = await res.json();
-    return json?.choices?.[0]?.message?.content?.trim() ?? null;
+    const cand = json?.candidates?.[0];
+    const text = cand?.content?.parts?.map((p: any) => p?.text ?? "").join("").trim() ?? "";
+    return text || null;
   } catch (e) {
     log.warn("AI summary failed", { error: (e as Error).message });
     return null;
@@ -338,7 +352,7 @@ Deno.serve(async (req): Promise<Response> => {
         }
 
         const finalDescription = detail.description ?? r.description ?? null;
-        const summary = await aiSummarize(r.title, finalDescription, r.country);
+        const summary = await aiSummarize(supabase, r.title, finalDescription, r.country);
 
         const update: Record<string, unknown> = {
           enrichment_status: "enriched",
@@ -359,7 +373,12 @@ Deno.serve(async (req): Promise<Response> => {
         enriched++;
       } catch (e) {
         failed++;
-        const msg = (e as Error).message;
+        const msg = await reportExternalServiceError(supabase, {
+          key: "scrape_do",
+          service: "Scrape.do",
+          context: `Tender detail enrichment (enrich-tenders, source: ${r.source})`,
+          error: e,
+        });
         log.warn("Enrichment failed", { id: r.id, source: r.source, error: msg });
         const { data: cur } = await supabase
           .from("tenders")

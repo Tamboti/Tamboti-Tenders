@@ -5,6 +5,7 @@
 import * as cheerio from "https://esm.sh/cheerio@1.0.0-rc.12";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { requireAdmin } from "../_shared/requireAdmin.ts";
+import { HttpError, reportExternalServiceError } from "../_shared/notifyAdmin.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -44,7 +45,7 @@ async function fetchViaProxy(url: string, attempt = 1): Promise<string> {
     });
     if (!res.ok) {
       const body = await res.text();
-      throw new Error(`HTTP ${res.status}: ${body.slice(0, 200)}`);
+      throw new HttpError(res.status, `HTTP ${res.status}: ${body.slice(0, 200)}`);
     }
     return await res.text();
   } catch (err) {
@@ -183,7 +184,12 @@ Deno.serve(async (req): Promise<Response> => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (err) {
-    const message = (err as Error).message;
+    const message = await reportExternalServiceError(supabase, {
+      key: "scrape_do",
+      service: "Scrape.do",
+      context: "Zambia scraper (zm-scrapper)",
+      error: err,
+    });
     const durationMs = Date.now() - startMs;
     log.error("Fatal error", { error: message });
     try {

@@ -27,6 +27,14 @@ const DEFAULT_IMAGE =
 // not to index it. Tune freely; this is a judgment call, not a hard rule.
 const STALE_TENDER_DAYS = 60;
 
+// Mirrors FREE_VISIBILITY_DAYS in src/lib/plan.ts — kept in sync by hand
+// since Deno functions can't import from src/. This page has no concept of
+// a signed-in user, so it must always render the same as a signed-out/free
+// visitor would: the source link should never appear here for a tender that
+// the live app itself would still have gated, or a spoofed bot user-agent
+// (or a search engine's cached copy) becomes a paywall bypass.
+const FREE_VISIBILITY_DAYS = 30;
+
 // Mirrors src/lib/slug.ts — kept in sync by hand since Deno functions can't
 // import from src/.
 const slugify = (s: string) =>
@@ -190,7 +198,7 @@ async function renderTender(supabase: ReturnType<typeof createClient>, id: strin
     .from("tenders")
     .select(
       "title, title_en, description, description_en, summary_en, procuring_entity, country, category, " +
-        "procurement_type, deadline, publication_date, estimated_value_usd, original_currency, updated_at, source_url"
+        "procurement_type, deadline, publication_date, estimated_value_usd, original_currency, updated_at, source_url, source"
     )
     .eq("id", id)
     .maybeSingle();
@@ -206,6 +214,8 @@ async function renderTender(supabase: ReturnType<typeof createClient>, id: strin
   const deadlineDate = tender.deadline ? new Date(tender.deadline) : null;
   const isStale =
     !!deadlineDate && Date.now() - deadlineDate.getTime() > STALE_TENDER_DAYS * 24 * 60 * 60 * 1000;
+  const daysLeft = deadlineDate ? Math.ceil((deadlineDate.getTime() - Date.now()) / (24 * 60 * 60 * 1000)) : null;
+  const sourceGated = daysLeft != null && daysLeft > FREE_VISIBILITY_DAYS;
 
   const metaRows: string[] = [];
   if (tender.procuring_entity) metaRows.push(`<li><strong>Procuring entity:</strong> ${esc(tender.procuring_entity)}</li>`);
@@ -234,7 +244,11 @@ async function renderTender(supabase: ReturnType<typeof createClient>, id: strin
     ${metaRows.join("\n    ")}
   </ul>
   ${toParagraphHtml(bodyText)}
-  ${tender.source_url ? `<p><a href="${esc(tender.source_url)}" rel="nofollow noopener">Original source</a></p>` : ""}
+  ${
+    tender.source_url && tender.source !== "tanzania" && !sourceGated
+      ? `<p><a href="${esc(tender.source_url)}" rel="nofollow noopener">Original source</a></p>`
+      : ""
+  }
 </article>`;
 
   return page({

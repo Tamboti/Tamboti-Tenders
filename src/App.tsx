@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
@@ -18,17 +19,29 @@ import Blog from "./pages/Blog";
 import BlogPost from "./pages/BlogPost";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
-import Alerts from "./pages/Alerts";
-import Sources from "./pages/Sources";
-import Bookmarks from "./pages/Bookmarks";
-import Billing from "./pages/Billing";
 import Login from "./pages/Login";
 import ResetPassword from "./pages/ResetPassword";
-import PostsAdmin from "./pages/admin/PostsAdmin";
-import Analytics from "./pages/admin/Analytics";
 import NotFound from "./pages/NotFound.tsx";
 import { RouteTracker } from "@/components/analytics/RouteTracker";
 import { ScrollToTop } from "@/components/layout/ScrollToTop";
+
+// Everything behind RequireAuth (the member portal + admin dashboard) is
+// lazy-loaded — none of it belongs in the bundle a first-time anonymous
+// visitor downloads just to see the landing page. The rich-text editor
+// (PostsAdmin) and charts (Analytics) are the heaviest offenders.
+const Alerts = lazy(() => import("./pages/Alerts"));
+const Sources = lazy(() => import("./pages/Sources"));
+const Bookmarks = lazy(() => import("./pages/Bookmarks"));
+const Billing = lazy(() => import("./pages/Billing"));
+const PostsAdmin = lazy(() => import("./pages/admin/PostsAdmin"));
+const Analytics = lazy(() => import("./pages/admin/Analytics"));
+const AdminUsers = lazy(() => import("./pages/admin/Users"));
+
+const RouteFallback = () => (
+  <div className="grid min-h-screen place-items-center bg-background">
+    <div className="text-sm text-muted-foreground">Loading...</div>
+  </div>
+);
 
 const queryClient = new QueryClient();
 
@@ -84,7 +97,9 @@ const App = () => (
                       path="/admin/sources"
                       element={
                         <RequireRole role="admin">
-                          <Sources />
+                          <Suspense fallback={<RouteFallback />}>
+                            <Sources />
+                          </Suspense>
                         </RequireRole>
                       }
                     />
@@ -92,7 +107,19 @@ const App = () => (
                       path="/admin/analytics"
                       element={
                         <RequireRole role="admin">
-                          <Analytics />
+                          <Suspense fallback={<RouteFallback />}>
+                            <Analytics />
+                          </Suspense>
+                        </RequireRole>
+                      }
+                    />
+                    <Route
+                      path="/admin/users"
+                      element={
+                        <RequireRole role="admin">
+                          <Suspense fallback={<RouteFallback />}>
+                            <AdminUsers />
+                          </Suspense>
                         </RequireRole>
                       }
                     />
@@ -101,17 +128,42 @@ const App = () => (
                       path="/admin/posts"
                       element={
                         <RequireRole role="admin">
-                          <PostsAdmin />
+                          <Suspense fallback={<RouteFallback />}>
+                            <PostsAdmin />
+                          </Suspense>
                         </RequireRole>
                       }
                     />
                     {/* Member portal — same pages any signed-in user (member
                         or admin) reaches from the "Portal"/"Dashboard" button
-                        in PublicNav. See nav.ts for the sidebar entries. */}
+                        in PublicNav. See nav.ts for the sidebar entries.
+                        /portal/tenders reuses the same eagerly-loaded Tenders
+                        page as the public route, so no Suspense needed there. */}
                     <Route path="/portal/tenders" element={<Tenders />} />
-                    <Route path="/portal/bookmarks" element={<Bookmarks />} />
-                    <Route path="/portal/alerts" element={<Alerts />} />
-                    <Route path="/portal/billing" element={<Billing />} />
+                    <Route
+                      path="/portal/bookmarks"
+                      element={
+                        <Suspense fallback={<RouteFallback />}>
+                          <Bookmarks />
+                        </Suspense>
+                      }
+                    />
+                    <Route
+                      path="/portal/alerts"
+                      element={
+                        <Suspense fallback={<RouteFallback />}>
+                          <Alerts />
+                        </Suspense>
+                      }
+                    />
+                    <Route
+                      path="/portal/billing"
+                      element={
+                        <Suspense fallback={<RouteFallback />}>
+                          <Billing />
+                        </Suspense>
+                      }
+                    />
                   </Route>
                 </Route>
                 <Route path="*" element={<NotFound />} />

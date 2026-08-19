@@ -453,12 +453,23 @@ const Tenders = () => {
 
   const uid = user?.id ?? getAnonUserId();
 
-  // Free users can browse/filter every tender, but shouldn't be able to open
-  // one that's still outside the free visibility window — not even the
-  // quick view, since that already surfaces contact info and full detail
-  // TenderDetail.tsx would otherwise gate behind the same paywall.
+  // Anyone can browse/filter every tender, but only a signed-in account
+  // within the free visibility window (or Pro, any time) can open the
+  // quick view — it surfaces summary/detail TenderDetail.tsx would
+  // otherwise gate behind the same paywall, so it needs the same rule.
   const openQuickView = (t: Tender) => {
-    if (!isPro && !isWithinFreeVisibilityWindow(t.deadline)) {
+    if (isPro) {
+      setQuickViewTender(t);
+      setQuickViewOpen(true);
+      return;
+    }
+    if (!user) {
+      toast.error("Sign in to view tender details.", {
+        action: { label: "Sign up", onClick: () => navigate("/login?mode=signup") },
+      });
+      return;
+    }
+    if (!isWithinFreeVisibilityWindow(t.deadline)) {
       toast.error(
         `This tender closes in more than ${FREE_VISIBILITY_DAYS} days - upgrade to Pro to view it now.`,
         { action: { label: "Upgrade", onClick: () => navigate("/pricing") } }

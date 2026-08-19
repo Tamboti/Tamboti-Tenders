@@ -334,10 +334,20 @@ export const TenderDetail = ({
     },
   ].filter(Boolean) as { label: string; value: React.ReactNode; valueClassName?: string }[];
 
-  // Free plan sees full detail only once a tender is within the closing
-  // window — see src/lib/plan.ts / the settled pricing model. Contact info
-  // is the one meta field withheld too, since it's the most actionable bit.
-  const gated = !isPro && !isWithinFreeVisibilityWindow(tender.deadline);
+  // Free plan sees full detail only once signed in AND once a tender is
+  // within the closing window — see src/lib/plan.ts / the settled pricing
+  // model. Signed-out visitors never get full detail, regardless of how
+  // close the deadline is; that's what a free account buys them. Contact
+  // info is the one meta field withheld too, since it's the most
+  // actionable bit.
+  const gateReason: "signed-out" | "outside-window" | null = isPro
+    ? null
+    : !user
+    ? "signed-out"
+    : !isWithinFreeVisibilityWindow(tender.deadline)
+    ? "outside-window"
+    : null;
+  const gated = gateReason !== null;
   const visibleMetaFields = gated
     ? metaFields.filter((f) => f.label !== "Contact information")
     : metaFields;
@@ -357,9 +367,13 @@ export const TenderDetail = ({
               <button
                 type="button"
                 onClick={() =>
-                  toast.error("Upgrade to Pro to view the original source.", {
-                    action: { label: "Upgrade", onClick: () => navigate("/pricing") },
-                  })
+                  gateReason === "signed-out"
+                    ? toast.error("Sign in to view the original source.", {
+                        action: { label: "Log in", onClick: () => navigate("/login") },
+                      })
+                    : toast.error("Upgrade to Pro to view the original source.", {
+                        action: { label: "Upgrade", onClick: () => navigate("/pricing") },
+                      })
                 }
                 className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
               >
@@ -471,18 +485,43 @@ export const TenderDetail = ({
       {gated ? (
         <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border bg-muted/20 px-6 py-10 text-center">
           <Lock className="h-6 w-6 text-muted-foreground" />
-          <div>
-            <p className="text-sm font-medium text-foreground">
-              Full details unlock closer to the deadline
-            </p>
-            <p className="mt-1 max-w-sm text-[13px] text-muted-foreground">
-              This tender closes in more than {FREE_VISIBILITY_DAYS} days. Free accounts see full
-              detail once it's within that window - Pro sees every tender the moment it's published.
-            </p>
-          </div>
-          <Button size="sm" onClick={() => navigate("/pricing")}>
-            Upgrade to Pro
-          </Button>
+          {gateReason === "signed-out" ? (
+            <>
+              <div>
+                <p className="text-sm font-medium text-foreground">
+                  Sign in to see full details
+                </p>
+                <p className="mt-1 max-w-sm text-[13px] text-muted-foreground">
+                  Create a free account to view full detail on tenders closing within{" "}
+                  {FREE_VISIBILITY_DAYS} days, or upgrade to Pro to see every tender the moment
+                  it's published.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant="outline" onClick={() => navigate("/login")}>
+                  Log in
+                </Button>
+                <Button size="sm" onClick={() => navigate("/login?mode=signup")}>
+                  Sign up free
+                </Button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div>
+                <p className="text-sm font-medium text-foreground">
+                  Full details unlock closer to the deadline
+                </p>
+                <p className="mt-1 max-w-sm text-[13px] text-muted-foreground">
+                  This tender closes in more than {FREE_VISIBILITY_DAYS} days. Free accounts see full
+                  detail once it's within that window - Pro sees every tender the moment it's published.
+                </p>
+              </div>
+              <Button size="sm" onClick={() => navigate("/pricing")}>
+                Upgrade to Pro
+              </Button>
+            </>
+          )}
         </div>
       ) : (
         <div className="space-y-7">

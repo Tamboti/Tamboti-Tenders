@@ -1,0 +1,15 @@
+# Tamboti Tenders
+
+Tamboti Tenders tracks public procurement tenders across Africa, pulled
+directly from government portals, development agencies, and official
+gazettes, then normalized so they can be searched and filtered in one
+place. Browsing and searching is free with no account required; a free
+account adds bookmarks and deadline alerts, and Pro removes the visibility
+delay on tenders closing further out.
+
+## Pages
+
+- [Browse tenders](https://www.tambotitender.com/tenders): searchable, filterable list of live procurement tenders by country, category, and deadline.
+- [Blog](https://www.tambotitender.com/blog): procurement market trends and tender insights across Africa.
+- [Pricing](https://www.tambotitender.com/pricing): Free and Pro plan details.
+- [Sitemap](https://www.tambotitender.com/sitemap.xml): full list of indexable pages, including individual tender and blog post URLs.

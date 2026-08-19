@@ -194,11 +194,22 @@ export const Landing = () => {
     if (bookmarksQuery.data) setBookmarks(bookmarksQuery.data);
   }, [bookmarksQuery.data]);
 
-  // Mirrors Tenders.tsx's openQuickView — same paywall check, so a free
-  // visitor can't see full detail on a not-yet-close tender from the
-  // landing preview when they couldn't from the Tenders page either.
+  // Mirrors Tenders.tsx's openQuickView — same paywall check, so a
+  // signed-out visitor can't see full detail from the landing preview
+  // either, and a free account still needs to be within the window.
   const openQuickView = (t: Tender) => {
-    if (!isPro && !isWithinFreeVisibilityWindow(t.deadline)) {
+    if (isPro) {
+      setQuickViewTender(t);
+      setQuickViewOpen(true);
+      return;
+    }
+    if (!user) {
+      toast.error("Sign in to view tender details.", {
+        action: { label: "Sign up", onClick: () => navigate("/login?mode=signup") },
+      });
+      return;
+    }
+    if (!isWithinFreeVisibilityWindow(t.deadline)) {
       toast.error(
         `This tender closes in more than ${FREE_VISIBILITY_DAYS} days - upgrade to Pro to view it now.`,
         { action: { label: "Upgrade", onClick: () => navigate("/pricing") } }
@@ -547,8 +558,10 @@ export const Landing = () => {
                   src={`https://flagcdn.com/h40/${code}.png`}
                   alt={code}
                   title={code.toUpperCase()}
-                  className="h-10 w-14 rounded shadow"
-                  style={{display: "inline-block"}}
+                  width={60}
+                  height={40}
+                  className="h-10 w-auto rounded shadow"
+                  style={{ display: "inline-block" }}
                   loading="lazy"
                 />
               ))}

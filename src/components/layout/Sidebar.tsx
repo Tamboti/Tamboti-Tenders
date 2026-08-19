@@ -31,33 +31,31 @@ export const Sidebar = ({ mobile = false, onNavigate }: SidebarProps) => {
 
   const content = (
     <>
-      {/* Top spacing */}
-      <div className={cn("px-3", mobile ? "pb-3" : "pb-2")} />
+      {/* LOGO — fixed header, outside the scroll area so it never scrolls
+          out of view no matter how long the nav list gets. */}
+      <div
+        className={cn(
+          "shrink-0 flex items-center border-b border-sidebar-border",
+          compact ? "justify-center px-2 py-3" : "gap-2 px-4 py-3"
+        )}
+      >
+        {!mobile && (
+          <img
+            src={LOGO_URL}
+            alt={SITE_NAME}
+            className="h-7 w-7 object-contain shrink-0"
+          />
+        )}
+
+        {!compact && (
+          <h1 className="text-sm font-semibold tracking-tight truncate text-foreground">
+            {isAdmin ? "Admin dashboard" : "My portal"}
+          </h1>
+        )}
+      </div>
 
       {/* NAV */}
       <nav className={cn("flex-1 overflow-y-auto px-2 py-2", dense ? "space-y-2" : "space-y-4")}>
-        {/* LOGO */}
-        <div
-          className={cn(
-            "mb-4 flex items-center",
-            compact ? "justify-center" : "gap-2 px-2"
-          )}
-        >
-          {!mobile && (
-            <img
-              src={LOGO_URL}
-              alt={SITE_NAME}
-              className="h-9 w-9 object-contain shrink-0"
-            />
-          )}
-
-          {!compact && (
-            <h1 className="text-base font-semibold tracking-tight truncate text-foreground">
-              {isAdmin ? "Admin dashboard" : "My portal"}
-            </h1>
-          )}
-        </div>
-
         {/* SECTIONS */}
         {navSections.map((section, idx) => (
           <div
@@ -189,25 +187,27 @@ export const Sidebar = ({ mobile = false, onNavigate }: SidebarProps) => {
               <ThemeToggle className="h-8 w-8 shrink-0" />
             </div>
 
-            <NavLink
-              to="/"
-              onClick={onNavigate}
-              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-sidebar-foreground/90 hover:bg-sidebar-accent hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-1 focus-visible:ring-offset-sidebar-background"
-            >
-              <Home className="h-4 w-4" />
-              Go to main site
-            </NavLink>
+            <div className="flex items-center gap-1.5">
+              <NavLink
+                to="/"
+                onClick={onNavigate}
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium text-sidebar-foreground/90 hover:bg-sidebar-accent hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-1 focus-visible:ring-offset-sidebar-background"
+              >
+                <Home className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">Main site</span>
+              </NavLink>
 
-            <button
-              onClick={() => {
-                void signOut();
-                onNavigate?.();
-              }}
-              className="flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-destructive bg-destructive/10 hover:bg-destructive/15 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/40 focus-visible:ring-offset-1 focus-visible:ring-offset-sidebar-background"
-            >
-              <LogOut className="h-4 w-4" />
-              Sign out
-            </button>
+              <button
+                onClick={() => {
+                  void signOut();
+                  onNavigate?.();
+                }}
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium text-destructive bg-destructive/10 hover:bg-destructive/15 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/40 focus-visible:ring-offset-1 focus-visible:ring-offset-sidebar-background"
+              >
+                <LogOut className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">Sign out</span>
+              </button>
+            </div>
           </>
         )}
 
@@ -246,7 +246,7 @@ export const Sidebar = ({ mobile = false, onNavigate }: SidebarProps) => {
     <motion.aside
       animate={{ width: collapsed ? 72 : 240 }}
       transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
-      className="hidden h-dvh flex-col overflow-hidden border-r border-sidebar-border bg-sidebar-background py-2 md:flex"
+      className="hidden h-dvh flex-col overflow-hidden border-r border-sidebar-border bg-sidebar-background md:flex"
     >
       {content}
     </motion.aside>
