@@ -1,13 +1,26 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Users as UsersIcon, Search, Sparkles, ExternalLink } from "@/components/icons";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Users as UsersIcon, Search, Sparkles, ExternalLink, Loader2 } from "@/components/icons";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { toast } from "@/components/ui/sonner";
 import { StatTile } from "@/components/analytics/StatTile";
 import { formatCurrency, formatDate } from "@/lib/format";
+import { useAuth } from "@/contexts/AuthContext";
 import type { PaymentRecord } from "@/hooks/use-subscription";
 
 type AdminUserRow = {
@@ -48,11 +61,16 @@ const PlanBadge = ({ user }: { user: AdminUserRow }) => {
   return <Badge variant="outline" className={STATUS_BADGE_CLASS[user.subscriptionStatus]}>{label}</Badge>;
 };
 
-function PaymentHistorySheet({ user, open, onOpenChange }: {
+function PaymentHistorySheet({ user, open, onOpenChange, onRoleChanged }: {
   user: AdminUserRow | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onRoleChanged: (userId: string, role: "admin" | "member") => void;
 }) {
+  const { user: currentUser } = useAuth();
+  const [roleTarget, setRoleTarget] = useState<"admin" | "member" | null>(null);
+  const [updatingRole, setUpdatingRole] = useState(false);
+
   const paymentsQuery = useQuery({
     queryKey: ["admin-user-history", user?.id],
     queryFn: async (): Promise<PaymentRecord[]> => {
@@ -66,6 +84,23 @@ function PaymentHistorySheet({ user, open, onOpenChange }: {
     enabled: !!user,
     staleTime: 30_000,
   });
+
+  const confirmRoleChange = async () => {
+    if (!user || !roleTarget) return;
+    setUpdatingRole(true);
+    const { data, error } = await supabase.functions.invoke<{ success?: boolean; error?: string }>(
+      "admin-users",
+      { body: { action: "setRole", userId: user.id, role: roleTarget } },
+    );
+    setUpdatingRole(false);
+    if (error || !data?.success) {
+      toast.error(data?.error ?? error?.message ?? "Failed to update role");
+      return;
+    }
+    toast.success(roleTarget === "admin" ? "Promoted to admin" : "Admin access removed");
+    onRoleChanged(user.id, roleTarget);
+    setRoleTarget(null);
+  };
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -82,8 +117,24 @@ function PaymentHistorySheet({ user, open, onOpenChange }: {
               {user.fullName && user.email && (
                 <p className="text-sm text-muted-foreground truncate">{user.email}</p>
               )}
-              <div className="mt-3">
+              <div className="mt-3 flex items-center gap-2">
                 <PlanBadge user={user} />
+                {user.role === "admin" ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs"
+                    disabled={user.id === currentUser?.id}
+                    title={user.id === currentUser?.id ? "You can't remove your own admin access" : undefined}
+                    onClick={() => setRoleTarget("member")}
+                  >
+                    Remove admin
+                  </Button>
+                ) : (
+                  <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setRoleTarget("admin")}>
+                    Make admin
+                  </Button>
+                )}
               </div>
             </div>
 
@@ -130,11 +181,40 @@ function PaymentHistorySheet({ user, open, onOpenChange }: {
           </>
         )}
       </SheetContent>
+
+      <AlertDialog open={!!roleTarget} onOpenChange={(open) => !open && setRoleTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {roleTarget === "admin" ? "Make this user an admin?" : "Remove admin access?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {roleTarget === "admin"
+                ? `${user?.fullName || user?.email || "This user"} will get full access to the admin dashboard, including users, billing, and content.`
+                : `${user?.fullName || user?.email || "This user"} will lose access to the admin dashboard.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={updatingRole}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                void confirmRoleChange();
+              }}
+              disabled={updatingRole}
+            >
+              {updatingRole ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : null}
+              {roleTarget === "admin" ? "Make admin" : "Remove admin"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Sheet>
   );
 }
 
 export default function AdminUsers() {
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<AdminUserRow | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -194,6 +274,13 @@ export default function AdminUsers() {
   const openHistory = (u: AdminUserRow) => {
     setSelected(u);
     setSheetOpen(true);
+  };
+
+  const handleRoleChanged = (userId: string, role: "admin" | "member") => {
+    setSelected((prev) => (prev && prev.id === userId ? { ...prev, role } : prev));
+    queryClient.setQueryData<AdminUserRow[]>(["admin-users-list"], (prev) =>
+      prev?.map((u) => (u.id === userId ? { ...u, role } : u))
+    );
   };
 
   return (
@@ -305,7 +392,12 @@ export default function AdminUsers() {
         </div>
       </Card>
 
-      <PaymentHistorySheet user={selected} open={sheetOpen} onOpenChange={setSheetOpen} />
+      <PaymentHistorySheet
+        user={selected}
+        open={sheetOpen}
+        onOpenChange={setSheetOpen}
+        onRoleChanged={handleRoleChanged}
+      />
     </div>
   );
 }

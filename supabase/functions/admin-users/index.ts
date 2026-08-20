@@ -8,6 +8,7 @@
 //   - Stripe payment history needs the Stripe secret key.
 //
 // POST body: { action: "emails" } | { action: "history", userId: string }
+//   | { action: "setRole", userId: string, role: "admin" | "member" }
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import Stripe from "npm:stripe@17.4.0";
@@ -41,6 +42,29 @@ Deno.serve(async (req: Request): Promise<Response> => {
   if (denied) return denied;
 
   const body = await req.json().catch(() => ({}));
+
+  if (body?.action === "setRole") {
+    const userId = body?.userId;
+    const role = body?.role;
+    if (typeof userId !== "string" || !userId) return json(400, { error: "userId is required" });
+    if (role !== "admin" && role !== "member") return json(400, { error: "role must be 'admin' or 'member'" });
+
+    // Don't let an admin lock themselves out — demotion of your own account is blocked.
+    const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
+    const anon = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: `Bearer ${token}` } } },
+    );
+    const { data: callerData } = await anon.auth.getUser();
+    if (role === "member" && callerData?.user?.id === userId) {
+      return json(400, { error: "You can't remove your own admin access" });
+    }
+
+    const { error } = await service.from("user_profiles").update({ role }).eq("id", userId);
+    if (error) return json(500, { error: error.message });
+    return json(200, { success: true });
+  }
 
   if (body?.action === "history") {
     const userId = body?.userId;
