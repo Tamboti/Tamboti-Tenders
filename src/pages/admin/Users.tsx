@@ -142,12 +142,38 @@ export default function AdminUsers() {
   const usersQuery = useQuery({
     queryKey: ["admin-users-list"],
     queryFn: async (): Promise<AdminUserRow[]> => {
-      const { data, error } = await supabase.functions.invoke<{ users?: AdminUserRow[]; error?: string }>(
-        "admin-users",
-        { body: { action: "list" } },
-      );
-      if (error) throw new Error(data?.error ?? error.message);
-      return data?.users ?? [];
+      // Same pattern as Sources/Analytics — user_profiles and subscriptions
+      // are readable directly under RLS for an admin (admin_read_policies.sql),
+      // so only the email lookup (auth.users, never client-readable) goes
+      // through the edge function.
+      const [profilesRes, subsRes, emailsRes] = await Promise.all([
+        supabase.from("user_profiles").select("id, role, full_name, created_at").order("created_at", { ascending: false }),
+        supabase.from("subscriptions").select("user_id, status, current_period_end"),
+        supabase.functions.invoke<{ emails?: Record<string, string | null>; error?: string }>(
+          "admin-users",
+          { body: { action: "emails" } },
+        ),
+      ]);
+
+      if (profilesRes.error) throw new Error(profilesRes.error.message);
+      if (subsRes.error) throw new Error(subsRes.error.message);
+      if (emailsRes.error) throw new Error(emailsRes.data?.error ?? emailsRes.error.message);
+
+      const subByUser = new Map((subsRes.data ?? []).map((s) => [s.user_id, s]));
+      const emails = emailsRes.data?.emails ?? {};
+
+      return (profilesRes.data ?? []).map((p) => {
+        const sub = subByUser.get(p.id);
+        return {
+          id: p.id,
+          email: emails[p.id] ?? null,
+          fullName: p.full_name,
+          role: p.role,
+          createdAt: p.created_at,
+          subscriptionStatus: (sub?.status ?? "inactive") as AdminUserRow["subscriptionStatus"],
+          currentPeriodEnd: sub?.current_period_end ?? null,
+        };
+      });
     },
     staleTime: 60_000,
   });
@@ -176,6 +202,12 @@ export default function AdminUsers() {
         <h1 className="page-title">Users</h1>
         <p className="text-sm text-muted-foreground mt-1">Look up an account, its plan, and its payment history.</p>
       </div>
+
+      {usersQuery.isError && (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+          Couldn't load users: {usersQuery.error instanceof Error ? usersQuery.error.message : "Unknown error"}
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatTile label="Total users" value={usersQuery.isLoading ? "—" : users.length} icon={UsersIcon} />
@@ -220,7 +252,7 @@ export default function AdminUsers() {
               ) : filtered.length === 0 ? (
                 <tr>
                   <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">
-                    {search ? "No matching users." : "No users yet."}
+                    {usersQuery.isError ? "Couldn't load users, see the error above." : search ? "No matching users." : "No users yet."}
                   </td>
                 </tr>
               ) : (
@@ -247,7 +279,7 @@ export default function AdminUsers() {
             <div className="px-4 py-8 text-center text-sm text-muted-foreground">Loading...</div>
           ) : filtered.length === 0 ? (
             <div className="px-4 py-8 text-center text-sm text-muted-foreground">
-              {search ? "No matching users." : "No users yet."}
+              {usersQuery.isError ? "Couldn't load users, see the error above." : search ? "No matching users." : "No users yet."}
             </div>
           ) : (
             filtered.map((u) => (
